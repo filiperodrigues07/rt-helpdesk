@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import logo from '@/assets/logo.png';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export function LoginPage() {
   const { login, isAuthenticated, isLoading } = useAuth();
@@ -44,7 +44,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <img src={logo} alt="RT HELPDESK" className="h-14 w-14 object-contain" />
+          <BrandLogo className="h-14 w-14" />
           <h1 className="text-lg font-semibold tracking-wide">RT HELPDESK</h1>
           <p className="text-sm text-muted-foreground">Gestão interna de suporte e implantação</p>
         </div>

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { MessageSquare, BookOpen, CircleDot, Loader2, RefreshCw, Wifi } from 'lucide-react';
+import { MessageSquare, BookOpen, CircleDot, ImageUp, Loader2, RefreshCw, Trash2, Wifi } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,8 +14,13 @@ import {
 } from '@/components/ui/dialog';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { integrationService } from '@/services/integrationService';
+import { useLogo, useRemoveLogo, useUploadLogo } from '@/hooks/useLogo';
+import { useAuth } from '@/contexts/AuthContext';
+import { BrandLogo } from '@/components/BrandLogo';
 import { toast } from '@/hooks/use-toast';
 import type { IntegrationInfo } from '@/types';
+
+const CAN_MANAGE_ROLES = ['ADMINISTRADOR', 'GERENTE'];
 
 const INTEGRATION_META: Record<
   IntegrationInfo['provider'],
@@ -40,8 +45,38 @@ const STATUS_LABELS: Record<IntegrationInfo['status'], string> = {
 };
 
 export function SettingsPage() {
+  const { user: currentUser } = useAuth();
+  const canManage = !!currentUser && CAN_MANAGE_ROLES.includes(currentUser.role);
+
   const { data, isLoading } = useIntegrations();
   const [syncConfirmOpen, setSyncConfirmOpen] = React.useState(false);
+
+  const { data: logoUrl, isLoading: logoLoading } = useLogo();
+  const uploadLogo = useUploadLogo();
+  const removeLogo = useRemoveLogo();
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
+
+  async function handleLogoSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    try {
+      await uploadLogo.mutateAsync(file);
+      toast({ title: 'Logo atualizada' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro ao enviar logo', description: 'Use PNG, JPG, GIF, WEBP ou SVG (até 3MB).' });
+    }
+  }
+
+  async function handleRemoveLogo() {
+    try {
+      await removeLogo.mutateAsync();
+      toast({ title: 'Logo padrão restaurada' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro ao remover logo' });
+    }
+  }
 
   const testMutation = useMutation({
     mutationFn: integrationService.testTotalChat,
@@ -75,6 +110,68 @@ export function SettingsPage() {
         <h1 className="text-xl font-semibold">Configurações</h1>
         <p className="text-sm text-muted-foreground">Preferências do sistema e status das integrações.</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-foreground">Identidade visual</CardTitle>
+          <CardDescription>
+            {canManage
+              ? 'Logo exibida na barra lateral e na tela de login.'
+              : 'Somente Administrador/Gerente podem alterar a logo do sistema.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {logoLoading ? (
+            <Skeleton className="h-16 w-16" />
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-border bg-muted/30 p-2">
+                <BrandLogo className="h-full w-full" />
+              </div>
+
+              {canManage && (
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                    className="hidden"
+                    onChange={handleLogoSelect}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadLogo.isPending}
+                      onClick={() => logoInputRef.current?.click()}
+                    >
+                      {uploadLogo.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ImageUp className="h-3.5 w-3.5" />
+                      )}
+                      Enviar nova logo
+                    </Button>
+                    {logoUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        disabled={removeLogo.isPending}
+                        onClick={handleRemoveLogo}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Restaurar padrão
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">PNG, JPG, GIF, WEBP ou SVG — até 3MB.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

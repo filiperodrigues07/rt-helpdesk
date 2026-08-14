@@ -19,9 +19,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { UserMenu } from '@/components/UserMenu';
-import logo from '@/assets/logo.png';
+import { UserAvatar } from '@/components/UserAvatar';
+import { BrandLogo } from '@/components/BrandLogo';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -40,15 +40,6 @@ interface SidebarProps {
   className?: string;
 }
 
-function initials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
-}
-
 export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
   const { user } = useAuth();
 
@@ -61,7 +52,7 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
       )}
     >
       <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
-        <img src={logo} alt="RT HELPDESK" className="h-7 w-7 shrink-0 object-contain" />
+        <BrandLogo className="h-7 w-7 shrink-0" />
         {!collapsed && (
           <span className="truncate text-sm font-semibold tracking-wide">RT HELPDESK</span>
         )}
@@ -118,9 +109,7 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
         <div className={cn('mt-2 flex items-center gap-2 rounded-md p-2', collapsed && 'justify-center')}>
           <UserMenu collapsed={collapsed}>
             <button className="flex w-full items-center gap-2 rounded-md text-left outline-none">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>{user ? initials(user.name) : '--'}</AvatarFallback>
-              </Avatar>
+              <UserAvatar name={user?.name ?? '--'} avatarUrl={user?.avatarUrl} />
               {!collapsed && (
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{user?.name}</p>

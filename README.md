@@ -2,7 +2,7 @@
 
 Sistema web interno para gestão da equipe de suporte e implantação de sistemas ERP. Centraliza chamados, agenda, clientes, equipe e indicadores de produtividade.
 
-> **Etapa atual: Etapa 10.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes** (com importação/exportação CSV), **Agenda**, **Equipe** (usuários + produtividade), **Relatórios** (filtros, gráficos e exportação CSV/PDF) e **Notificações** (central no header, por polling). O que resta é evolução: atribuição automática via TotalChat, exportação de relatórios em Excel, e a API real da Base de Conhecimento quando disponível.
+> **Etapa atual: Etapa 11.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes** (com importação/exportação CSV), **Agenda**, **Equipe** (usuários + produtividade, com exclusão), **Relatórios** (filtros, gráficos e exportação CSV/PDF) e **Notificações** (central no header, por polling). Além disso: **logo customizável** (Configurações → Identidade visual, refletida na Sidebar e na tela de login) e **autoatendimento de perfil** (menu "Meu perfil": upload de foto, edição de dados e troca de senha). O que resta é evolução: atribuição automática via TotalChat, exportação de relatórios em Excel, e a API real da Base de Conhecimento quando disponível.
 
 ---
 
@@ -147,8 +147,15 @@ GET    /api/auth/me
 GET    /api/users
 POST   /api/users
 PATCH  /api/users/:id
+DELETE /api/users/:id                 (exclusão definitiva — bloqueada para o próprio usuário logado)
+PATCH  /api/users/me                  (autoatendimento: nome/e-mail/cargo e, opcionalmente, troca de senha)
+POST   /api/users/me/avatar           (multipart/form-data, campo "file" — upload da própria foto)
 
 GET    /api/roles                     (papéis disponíveis, para formulários)
+
+GET    /api/settings/logo             (pública — necessária na tela de login antes do usuário autenticar)
+POST   /api/settings/logo             (multipart/form-data, campo "file" — Administrador/Gerente)
+DELETE /api/settings/logo             (restaura a logo padrão — Administrador/Gerente)
 
 GET    /api/integrations/totalchat/attendants  (atendentes reais do TotalChat, para vincular a um usuário)
 
@@ -209,10 +216,12 @@ GET    /api/knowledge-base            (?q= para pesquisa — dados mockados)
 /clientes/:id            Detalhe do cliente (indicadores, chamados, agenda, responsáveis)
 /clientes/:id/editar     Edição de cliente
 /base-de-conhecimento    Consulta a artigos (dados mockados)
-/equipe                  Gerenciamento de usuários (criar/editar/ativar/desativar) + métricas de produtividade
+/equipe                  Gerenciamento de usuários (criar/editar/ativar/desativar/excluir) + métricas de produtividade
 /relatorios              Filtros (período/cliente/responsável/categoria/prioridade/status), gráficos e exportação CSV/PDF
-/configuracoes           Status das integrações + testar/sincronizar TotalChat
+/configuracoes           Identidade visual (logo customizável) + status das integrações + testar/sincronizar TotalChat
 ```
+
+Menu do usuário (canto inferior da Sidebar) → **Meu perfil**: upload de foto, edição de nome/e-mail/cargo e troca de senha.
 
 ---
 

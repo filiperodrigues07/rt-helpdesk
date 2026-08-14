@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRoles } from '@/hooks/useRoles';
 import { useTotalChatAttendants } from '@/hooks/useTotalChatAttendants';
-import { useCreateUser, useUpdateUser } from '@/hooks/useUserMutations';
+import { useCreateUser, useDeleteUser, useUpdateUser } from '@/hooks/useUserMutations';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { ROLE_LABELS } from '@/utils/roleLabels';
 import type { TeamMember } from '@/types';
@@ -28,11 +29,14 @@ interface UserFormDialogProps {
 
 export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps) {
   const isEditing = !!user;
+  const { user: currentUser } = useAuth();
   const { data: roles } = useRoles();
   const { data: attendants } = useTotalChatAttendants();
 
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
+  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
 
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
@@ -44,6 +48,7 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
 
   React.useEffect(() => {
     if (!open) return;
+    setConfirmingDelete(false);
 
     if (user) {
       setName(user.name);
@@ -112,7 +117,22 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
     }
   }
 
+  async function handleDelete() {
+    if (!user) return;
+    try {
+      await deleteUser.mutateAsync(user.id);
+      toast({ title: 'Usuário excluído' });
+      onOpenChange(false);
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ??
+        'Tente novamente.';
+      toast({ variant: 'destructive', title: 'Erro ao excluir usuário', description: message });
+    }
+  }
+
   const isSubmitting = createUser.isPending || updateUser.isPending;
+  const isSelf = !!user && !!currentUser && user.id === currentUser.id;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -213,14 +233,49 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !roleId}>
-              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEditing ? 'Salvar alterações' : 'Criar usuário'}
-            </Button>
+          <div className="flex items-center justify-between gap-2 pt-2">
+            {isEditing && !isSelf ? (
+              confirmingDelete ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Excluir este usuário?</span>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={deleteUser.isPending}
+                    onClick={handleDelete}
+                  >
+                    {deleteUser.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Confirmar
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmingDelete(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setConfirmingDelete(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir
+                </Button>
+              )
+            ) : (
+              <span />
+            )}
+
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmitting || !roleId}>
+                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isEditing ? 'Salvar alterações' : 'Criar usuário'}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

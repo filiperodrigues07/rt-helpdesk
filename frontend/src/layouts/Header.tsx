@@ -8,9 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserMenu } from '@/components/UserMenu';
+import { UserAvatar } from '@/components/UserAvatar';
 import { GlobalSearch } from '@/components/GlobalSearch';
 import { NotificationBell } from '@/components/NotificationBell';
 
@@ -145,9 +145,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         <UserMenu>
           <button className="outline-none">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback>{user ? initials(user.name) : '--'}</AvatarFallback>
-            </Avatar>
+            <UserAvatar name={user?.name ?? '--'} avatarUrl={user?.avatarUrl} />
           </button>
         </UserMenu>
       </div>
@@ -155,13 +153,4 @@ export function Header({ onMenuClick }: HeaderProps) {
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </header>
   );
-}
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
 }

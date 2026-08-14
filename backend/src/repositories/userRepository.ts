@@ -31,6 +31,10 @@ export const userRepository = {
     return prisma.user.update({ where: { id }, data, include: { role: true } });
   },
 
+  async delete(id: string) {
+    await prisma.user.delete({ where: { id } });
+  },
+
   async getProductivityStats() {
     const RESOLVED_STATUSES: Prisma.TicketWhereInput['status'] = { in: ['RESOLVIDO', 'ENCERRADO'] };
 

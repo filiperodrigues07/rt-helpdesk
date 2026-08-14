@@ -9,6 +9,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (user: AuthenticatedUser) => void;
 }
 
 const AuthContext = React.createContext<AuthContextValue | undefined>(undefined);
@@ -45,9 +46,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = React.useCallback((updated: AuthenticatedUser) => {
+    setUser(updated);
+  }, []);
+
   const value = React.useMemo(
-    () => ({ user, isLoading, isAuthenticated: !!user, login, logout }),
-    [user, isLoading, login, logout],
+    () => ({ user, isLoading, isAuthenticated: !!user, login, logout, updateUser }),
+    [user, isLoading, login, logout, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

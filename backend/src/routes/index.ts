@@ -12,6 +12,7 @@ import { appointmentRoutes } from './appointment.routes';
 import { roleRoutes } from './role.routes';
 import { reportRoutes } from './report.routes';
 import { notificationRoutes } from './notification.routes';
+import { settingsRoutes } from './settings.routes';
 
 export const apiRouter = Router();
 
@@ -28,3 +29,4 @@ apiRouter.use('/appointments', appointmentRoutes);
 apiRouter.use('/roles', roleRoutes);
 apiRouter.use('/reports', reportRoutes);
 apiRouter.use('/notifications', notificationRoutes);
+apiRouter.use('/settings', settingsRoutes);

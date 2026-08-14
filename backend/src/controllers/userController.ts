@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { userService } from '../services/userService';
+import { authService } from '../services/authService';
 import { ok, created } from '../utils/apiResponse';
+import { AppError } from '../utils/AppError';
 
 const createUserSchema = z.object({
   name: z.string().trim().min(2, 'Nome é obrigatório'),
@@ -22,6 +24,21 @@ const updateUserSchema = z.object({
   totalchatAttendantId: z.string().trim().nullable().optional(),
 });
 
+const updateSelfSchema = z.object({
+  name: z.string().trim().min(2).optional(),
+  email: z.string().trim().email('E-mail inválido').optional(),
+  jobTitle: z.string().trim().optional(),
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(6, 'Nova senha deve ter ao menos 6 caracteres').optional(),
+});
+
+function requireUser(req: Request) {
+  if (!req.user) {
+    throw new AppError('Usuário não autenticado', 401);
+  }
+  return req.user;
+}
+
 export const userController = {
   async list(_req: Request, res: Response) {
     const users = await userService.list();
@@ -41,5 +58,31 @@ export const userController = {
       password: input.password || undefined,
     });
     return ok(res, user);
+  },
+
+  async remove(req: Request, res: Response) {
+    const user = requireUser(req);
+    await userService.delete(req.params.id, user.id);
+    return ok(res, { success: true });
+  },
+
+  async updateSelf(req: Request, res: Response) {
+    const user = requireUser(req);
+    const input = updateSelfSchema.parse(req.body);
+    const updated = await userService.updateSelf(user.id, input);
+    return ok(res, updated);
+  },
+
+  async uploadAvatar(req: Request, res: Response) {
+    const user = requireUser(req);
+
+    if (!req.file) {
+      throw new AppError('Nenhum arquivo enviado', 400);
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    await userService.updateAvatar(user.id, avatarUrl);
+    const me = await authService.me(user.id);
+    return ok(res, me);
   },
 };

@@ -3,26 +3,17 @@ import { useQuery } from '@tanstack/react-query';
 import { MessageSquare, Plus, UsersRound } from 'lucide-react';
 import { userService } from '@/services/userService';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { UserFormDialog } from '@/components/team/UserFormDialog';
+import { UserAvatar } from '@/components/UserAvatar';
 import { ROLE_LABELS } from '@/utils/roleLabels';
 import { useAuth } from '@/contexts/AuthContext';
 import type { TeamMember } from '@/types';
 
 const CAN_MANAGE_ROLES = ['ADMINISTRADOR', 'GERENTE'];
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
-}
 
 function StatCell({ label, value }: { label: string; value: string }) {
   return (
@@ -96,9 +87,7 @@ export function TeamPage() {
             >
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback>{initials(member.name)}</AvatarFallback>
-                  </Avatar>
+                  <UserAvatar name={member.name} avatarUrl={member.avatarUrl} className="h-10 w-10" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <p className="truncate text-sm font-medium">{member.name}</p>

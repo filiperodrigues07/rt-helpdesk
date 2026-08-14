@@ -11,6 +11,7 @@ import { tagRoutes } from './tag.routes';
 import { appointmentRoutes } from './appointment.routes';
 import { roleRoutes } from './role.routes';
 import { reportRoutes } from './report.routes';
+import { notificationRoutes } from './notification.routes';
 
 export const apiRouter = Router();
 
@@ -26,3 +27,4 @@ apiRouter.use('/tags', tagRoutes);
 apiRouter.use('/appointments', appointmentRoutes);
 apiRouter.use('/roles', roleRoutes);
 apiRouter.use('/reports', reportRoutes);
+apiRouter.use('/notifications', notificationRoutes);

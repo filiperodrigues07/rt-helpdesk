@@ -2,7 +2,7 @@
 
 Sistema web interno para gestão da equipe de suporte e implantação de sistemas ERP. Centraliza chamados, agenda, clientes, equipe e indicadores de produtividade.
 
-> **Etapa atual: Etapa 8.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes**, **Agenda**, **Equipe** (usuários + produtividade) e **Relatórios** (filtros, gráficos e exportação CSV). O que resta é evolução: notificações em tempo real, atribuição automática via TotalChat, exportação em Excel/PDF, e a API real da Base de Conhecimento quando disponível.
+> **Etapa atual: Etapa 9.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes**, **Agenda**, **Equipe** (usuários + produtividade), **Relatórios** (filtros, gráficos e exportação CSV) e **Notificações** (central no header, por polling). O que resta é evolução: atribuição automática via TotalChat, exportação de relatórios em Excel/PDF, e a API real da Base de Conhecimento quando disponível.
 
 ---
 
@@ -172,6 +172,11 @@ DELETE /api/appointments/:id
 GET    /api/reports/summary           (totais, SLA, por cliente/categoria/atendente — mesmos filtros dos chamados)
 GET    /api/reports/tickets           (lista para exportação CSV)
 
+GET    /api/notifications             (mais recentes do usuário logado)
+GET    /api/notifications/unread-count
+POST   /api/notifications/:id/read
+POST   /api/notifications/read-all
+
 GET    /api/tickets                   (filtros, ordenação, paginação)
 GET    /api/tickets/board             (todos os chamados, para o Kanban)
 POST   /api/tickets
@@ -227,6 +232,20 @@ Crítica  → 2 horas
 
 ---
 
+## Notificações
+
+Central de notificações real no header (sininho com contador de não lidas). Eventos cobertos, conforme a especificação original:
+
+- Chamado atribuído / responsável alterado — disparado ao criar ou reatribuir um chamado.
+- Menção em comentário — detecta `@Nome` ou `@Nome Sobrenome` no texto do comentário e casa com usuários ativos.
+- Chamado atualizado — disparado em mudanças de status, prioridade ou categoria.
+- SLA próximo do vencimento / SLA vencido — job periódico (`backend/src/jobs/notificationJobs.ts`, a cada 5 min) verifica chamados abertos com SLA vencendo em até 1h ou já vencido.
+- Evento da agenda próximo — mesmo job, verifica eventos começando em até 30 min.
+
+**Não é tempo real via WebSocket** — o frontend consulta a API (`GET /api/notifications/unread-count` e `GET /api/notifications`) a cada 30s via polling (`refetchInterval` do TanStack Query). Decisão consciente: evita adicionar Socket.IO/infra extra por enquanto; a atualização na prática é quase instantânea. Os jobs periódicos evitam duplicar notificações do mesmo tipo para o mesmo chamado/evento (`notifyOnceForTicket` / `notifyOnceForAppointment`).
+
+---
+
 ## Sobre as integrações
 
 ### TotalChat
@@ -251,7 +270,7 @@ A tela **Configurações → Integrações** nunca exibe uma integração como "
 
 ## Próxima etapa recomendada
 
-1. Sistema de **Notificações** em tempo real.
-2. Usar o vínculo usuário↔atendente do TotalChat para atribuição automática de responsável em chamados criados via TotalChat.
-3. Exportação de relatórios em Excel e PDF (hoje só CSV).
-4. Conectar a API real da Base de Conhecimento, substituindo os dados mockados.
+1. Usar o vínculo usuário↔atendente do TotalChat para atribuição automática de responsável em chamados criados via TotalChat.
+2. Exportação de relatórios em Excel e PDF (hoje só CSV).
+3. Conectar a API real da Base de Conhecimento, substituindo os dados mockados.
+4. Se o volume de usuários simultâneos crescer, migrar as notificações de polling para WebSocket.

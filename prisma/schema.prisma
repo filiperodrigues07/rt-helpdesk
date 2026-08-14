@@ -375,8 +375,9 @@ model Notification {
   message String?
   readAt  DateTime?
 
-  relatedTicketId String?
-  relatedUrl      String?
+  relatedTicketId      String?
+  relatedAppointmentId String?
+  relatedUrl           String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

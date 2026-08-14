@@ -402,3 +402,24 @@ export interface ApiError {
   success: false;
   error: { message: string; details?: unknown };
 }
+
+export type NotificationType =
+  | 'CHAMADO_ATRIBUIDO'
+  | 'RESPONSAVEL_ALTERADO'
+  | 'MENCAO_COMENTARIO'
+  | 'SLA_PROXIMO_VENCIMENTO'
+  | 'SLA_VENCIDO'
+  | 'EVENTO_AGENDA_PROXIMO'
+  | 'CHAMADO_ATUALIZADO';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string | null;
+  readAt: string | null;
+  relatedTicketId: string | null;
+  relatedAppointmentId: string | null;
+  relatedUrl: string | null;
+  createdAt: string;
+}

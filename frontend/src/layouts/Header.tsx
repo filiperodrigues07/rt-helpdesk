@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, ChevronRight, Menu, Plus, Search } from 'lucide-react';
+import { ChevronRight, Menu, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserMenu } from '@/components/UserMenu';
 import { GlobalSearch } from '@/components/GlobalSearch';
+import { NotificationBell } from '@/components/NotificationBell';
 
 const SECTION_LABELS: Record<string, string> = {
   '': 'Dashboard',
@@ -140,18 +141,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-72">
-            <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-              Nenhuma notificação por enquanto.
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <NotificationBell />
 
         <UserMenu>
           <button className="outline-none">

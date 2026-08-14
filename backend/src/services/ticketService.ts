@@ -1,5 +1,7 @@
 import { TicketOrigin, TicketPriority, TicketStatus } from '@prisma/client';
 import { ticketRepository, TicketListFilters, TicketListOptions } from '../repositories/ticketRepository';
+import { userRepository } from '../repositories/userRepository';
+import { notificationService } from './notificationService';
 import { AppError } from '../utils/AppError';
 
 const RESOLVED_STATUSES: TicketStatus[] = ['RESOLVIDO', 'ENCERRADO'];
@@ -19,6 +21,26 @@ const PRIORITY_LABELS: Record<TicketPriority, string> = {
   ALTA: 'Alta',
   CRITICA: 'Crítica',
 };
+
+/** Detecta menções "@Nome" ou "@Nome Sobrenome" no texto e casa com usuários ativos (exceto o autor). */
+async function findMentionedUsers(content: string, authorId: string) {
+  const mentionMatches = content.match(/@[\p{L}]+(?:\s[\p{L}]+)?/gu) ?? [];
+  if (mentionMatches.length === 0) return [];
+
+  const mentionedNames = mentionMatches.map((match) => match.slice(1).trim().toLowerCase());
+  const users = await userRepository.list();
+
+  const matched = new Map<string, { id: string; name: string }>();
+  for (const user of users) {
+    if (user.id === authorId || !user.active) continue;
+    const fullName = user.name.toLowerCase();
+    const firstName = fullName.split(' ')[0];
+    if (mentionedNames.some((mention) => mention === fullName || mention === firstName)) {
+      matched.set(user.id, { id: user.id, name: user.name });
+    }
+  }
+  return [...matched.values()];
+}
 
 interface CreateTicketInput {
   title: string;
@@ -108,6 +130,17 @@ export const ticketService = {
         action: 'RESPONSAVEL_ATRIBUIDO',
         newValue: ticket.assignee?.name ?? null,
       });
+
+      if (input.assigneeId !== input.creatorId) {
+        await notificationService.notify({
+          userId: input.assigneeId,
+          type: 'CHAMADO_ATRIBUIDO',
+          title: `Novo chamado atribuído: #${ticket.number}`,
+          message: ticket.title,
+          relatedTicketId: ticket.id,
+          relatedUrl: `/chamados/${ticket.id}`,
+        });
+      }
     }
 
     return ticketRepository.findById(ticket.id);
@@ -180,6 +213,36 @@ export const ticketService = {
       await ticketRepository.recordHistory(entry);
     }
 
+    if (
+      input.assigneeId !== undefined &&
+      input.assigneeId &&
+      input.assigneeId !== current.assigneeId &&
+      input.assigneeId !== actorId
+    ) {
+      await notificationService.notify({
+        userId: input.assigneeId,
+        type: 'RESPONSAVEL_ALTERADO',
+        title: `Você foi definido como responsável: #${ticket.number}`,
+        message: ticket.title,
+        relatedTicketId: ticket.id,
+        relatedUrl: `/chamados/${ticket.id}`,
+      });
+    } else if (
+      current.assigneeId &&
+      current.assigneeId !== actorId &&
+      ((input.priority && input.priority !== current.priority) ||
+        (input.categoryId !== undefined && input.categoryId !== current.categoryId))
+    ) {
+      await notificationService.notify({
+        userId: current.assigneeId,
+        type: 'CHAMADO_ATUALIZADO',
+        title: `Chamado atualizado: #${ticket.number}`,
+        message: ticket.title,
+        relatedTicketId: ticket.id,
+        relatedUrl: `/chamados/${ticket.id}`,
+      });
+    }
+
     return ticket;
   },
 
@@ -207,6 +270,17 @@ export const ticketService = {
       oldValue: STATUS_LABELS[current.status],
       newValue: STATUS_LABELS[status],
     });
+
+    if (current.assigneeId && current.assigneeId !== actorId) {
+      await notificationService.notify({
+        userId: current.assigneeId,
+        type: 'CHAMADO_ATUALIZADO',
+        title: `Chamado atualizado: #${current.number}`,
+        message: `Status alterado para ${STATUS_LABELS[status]}`,
+        relatedTicketId: id,
+        relatedUrl: `/chamados/${id}`,
+      });
+    }
 
     return ticket;
   },
@@ -238,13 +312,26 @@ export const ticketService = {
   },
 
   async addComment(ticketId: string, authorId: string, content: string) {
-    await this.getById(ticketId);
+    const ticket = await this.getById(ticketId);
     const comment = await ticketRepository.addComment({ ticketId, authorId, content });
     await ticketRepository.recordHistory({
       ticketId,
       authorId,
       action: 'COMENTARIO_ADICIONADO',
     });
+
+    const mentioned = await findMentionedUsers(content, authorId);
+    for (const user of mentioned) {
+      await notificationService.notify({
+        userId: user.id,
+        type: 'MENCAO_COMENTARIO',
+        title: `Você foi mencionado no chamado #${ticket.number}`,
+        message: content.slice(0, 200),
+        relatedTicketId: ticketId,
+        relatedUrl: `/chamados/${ticketId}`,
+      });
+    }
+
     return comment;
   },
 

@@ -47,3 +47,6 @@ docker-compose.override.yml
 
 # Documentação de terceiros (não redistribuir)
 documentacao/
+
+# Configurações locais do Claude Code
+.claude/

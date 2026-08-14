@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Download, FileBarChart, Loader2 } from 'lucide-react';
+import { Download, FileBarChart, FileText, Loader2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { userService } from '@/services/userService';
 import { reportService } from '@/services/reportService';
 import { downloadCsv } from '@/utils/csv';
+import { exportReportPdf } from '@/utils/reportPdf';
 import { STATUS_LABELS, PRIORITY_LABELS } from '@/utils/ticketLabels';
 import { toast } from '@/hooks/use-toast';
 import type { ReportFilters, TicketPriority, TicketStatus } from '@/types';
@@ -37,7 +38,7 @@ export function ReportsPage() {
     setFilters((prev) => ({ ...prev, [key]: value || undefined }));
   }
 
-  async function handleExport() {
+  async function handleExportCsv() {
     setExporting(true);
     try {
       const rows = await reportService.tickets(filters);
@@ -51,6 +52,15 @@ export function ReportsPage() {
     } finally {
       setExporting(false);
     }
+  }
+
+  function handleExportPdf() {
+    if (!data) return;
+    exportReportPdf(data, filters, {
+      customerName: customers?.find((c) => c.id === filters.customerId)?.tradeName ?? undefined,
+      assigneeName: users?.find((u) => u.id === filters.assigneeId)?.name,
+      categoryName: categories?.find((c) => c.id === filters.categoryId)?.name,
+    });
   }
 
   const chartData = React.useMemo(
@@ -69,10 +79,16 @@ export function ReportsPage() {
           <h1 className="text-xl font-semibold">Relatórios</h1>
           <p className="text-sm text-muted-foreground">Chamados abertos, resolvidos, SLA e produtividade.</p>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={exporting || isLoading}>
-          {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          Exportar CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExportCsv} disabled={exporting || isLoading}>
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Exportar CSV
+          </Button>
+          <Button variant="outline" onClick={handleExportPdf} disabled={!data || isLoading}>
+            <FileText className="h-4 w-4" />
+            Exportar PDF
+          </Button>
+        </div>
       </div>
 
       <Card>

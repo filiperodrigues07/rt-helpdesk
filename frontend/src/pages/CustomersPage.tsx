@@ -1,18 +1,52 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, ChevronLeft, ChevronRight, Plus, Search, Ticket, CalendarDays } from 'lucide-react';
+import { Building2, ChevronLeft, ChevronRight, Download, Plus, Search, Ticket, CalendarDays, Upload } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCustomerList } from '@/hooks/useCustomers';
+import { customerService } from '@/services/customerService';
+import { downloadCsv } from '@/utils/csv';
+import { toast } from '@/hooks/use-toast';
+import { ImportCustomersDialog } from '@/components/customers/ImportCustomersDialog';
 
 export function CustomersPage() {
   const navigate = useNavigate();
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState(1);
+  const [importOpen, setImportOpen] = React.useState(false);
+  const [exporting, setExporting] = React.useState(false);
 
   const { data, isLoading } = useCustomerList({ page, pageSize: 20, search: search || undefined });
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const customers = await customerService.exportAll();
+      if (customers.length === 0) {
+        toast({ title: 'Nada para exportar', description: 'Nenhum cliente cadastrado ainda.' });
+        return;
+      }
+      downloadCsv(
+        `clientes-${new Date().toISOString().slice(0, 10)}.csv`,
+        customers.map((customer) => ({
+          'Razão Social': customer.companyName,
+          'Nome Fantasia': customer.tradeName ?? '',
+          CNPJ: customer.cnpj ?? '',
+          Telefone: customer.phone ?? '',
+          'E-mail': customer.email ?? '',
+          Cidade: customer.city ?? '',
+          Chamados: customer._count.tickets,
+          'Data de cadastro': customer.createdAt.slice(0, 10),
+        })),
+      );
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro ao exportar' });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -21,10 +55,20 @@ export function CustomersPage() {
           <h1 className="text-xl font-semibold">Clientes</h1>
           <p className="text-sm text-muted-foreground">Cadastro de clientes atendidos pela equipe.</p>
         </div>
-        <Button onClick={() => navigate('/clientes/novo')}>
-          <Plus className="h-4 w-4" />
-          Novo cliente
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4" />
+            Importar CSV
+          </Button>
+          <Button variant="outline" onClick={handleExport} disabled={exporting}>
+            <Download className="h-4 w-4" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => navigate('/clientes/novo')}>
+            <Plus className="h-4 w-4" />
+            Novo cliente
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -129,6 +173,8 @@ export function CustomersPage() {
           </div>
         )}
       </Card>
+
+      <ImportCustomersDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }

@@ -57,4 +57,33 @@ export const customerService = {
     }
     return customerRepository.update(id, input);
   },
+
+  async importBatch(rows: CustomerInput[]) {
+    const results: { row: number; status: 'created' | 'skipped'; name: string; reason?: string }[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      if (!row.companyName || row.companyName.trim().length < 2) {
+        results.push({ row: i + 1, status: 'skipped', name: row.companyName || '(sem nome)', reason: 'Razão social ausente ou muito curta' });
+        continue;
+      }
+
+      if (row.cnpj) {
+        const existing = await customerRepository.findByCnpj(row.cnpj);
+        if (existing) {
+          results.push({ row: i + 1, status: 'skipped', name: row.companyName, reason: 'CNPJ já cadastrado' });
+          continue;
+        }
+      }
+
+      await customerRepository.create(row);
+      results.push({ row: i + 1, status: 'created', name: row.companyName });
+    }
+
+    return {
+      created: results.filter((r) => r.status === 'created').length,
+      skipped: results.filter((r) => r.status === 'skipped'),
+    };
+  },
 };

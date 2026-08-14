@@ -2,6 +2,7 @@ import { api } from './api';
 import type {
   ApiSuccess,
   CustomerDetail,
+  CustomerImportResult,
   CustomerInput,
   CustomerListItem,
   CustomerOption,
@@ -32,5 +33,28 @@ export const customerService = {
   async update(id: string, input: Partial<CustomerInput>) {
     const { data } = await api.patch<ApiSuccess<CustomerDetail>>(`/customers/${id}`, input);
     return data.data;
+  },
+
+  async importBatch(rows: CustomerInput[]) {
+    const { data } = await api.post<ApiSuccess<CustomerImportResult>>('/customers/import', { rows });
+    return data.data;
+  },
+
+  async exportAll() {
+    const pageSize = 100;
+    const all: CustomerListItem[] = [];
+    let page = 1;
+    let totalPages = 1;
+
+    do {
+      const { data } = await api.get<ApiSuccess<PaginatedResult<CustomerListItem>>>('/customers', {
+        params: { page, pageSize },
+      });
+      all.push(...data.data.items);
+      totalPages = data.data.pagination.totalPages;
+      page++;
+    } while (page <= totalPages);
+
+    return all;
   },
 };

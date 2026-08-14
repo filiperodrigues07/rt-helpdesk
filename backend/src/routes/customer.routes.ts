@@ -8,6 +8,7 @@ export const customerRoutes = Router();
 customerRoutes.use(authenticate);
 customerRoutes.get('/', asyncHandler(customerController.list));
 customerRoutes.get('/minimal', asyncHandler(customerController.listMinimal));
+customerRoutes.post('/import', asyncHandler(customerController.importBatch));
 customerRoutes.post('/', asyncHandler(customerController.create));
 customerRoutes.get('/:id', asyncHandler(customerController.getById));
 customerRoutes.patch('/:id', asyncHandler(customerController.update));

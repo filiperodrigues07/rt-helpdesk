@@ -2,13 +2,13 @@
 
 Sistema web interno para gestão da equipe de suporte e implantação de sistemas ERP. Centraliza chamados, agenda, clientes, equipe e indicadores de produtividade.
 
-> **Etapa atual: Etapa 9.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes**, **Agenda**, **Equipe** (usuários + produtividade), **Relatórios** (filtros, gráficos e exportação CSV) e **Notificações** (central no header, por polling). O que resta é evolução: atribuição automática via TotalChat, exportação de relatórios em Excel/PDF, e a API real da Base de Conhecimento quando disponível.
+> **Etapa atual: Etapa 10.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes** (com importação/exportação CSV), **Agenda**, **Equipe** (usuários + produtividade), **Relatórios** (filtros, gráficos e exportação CSV/PDF) e **Notificações** (central no header, por polling). O que resta é evolução: atribuição automática via TotalChat, exportação de relatórios em Excel, e a API real da Base de Conhecimento quando disponível.
 
 ---
 
 ## Stack
 
-**Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui (componentes Radix), React Router, TanStack Query, Lucide Icons, Recharts, FullCalendar, @dnd-kit.
+**Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui (componentes Radix), React Router, TanStack Query, Lucide Icons, Recharts, FullCalendar, @dnd-kit, jsPDF.
 
 **Backend:** Node.js, TypeScript, Express, JWT, bcrypt, Zod.
 
@@ -159,6 +159,7 @@ GET    /api/customers/minimal         (lista leve — para uso em formulários)
 POST   /api/customers
 GET    /api/customers/:id             (com indicadores, chamados recentes, agenda, responsáveis)
 PATCH  /api/customers/:id
+POST   /api/customers/import          (importação em lote via CSV — máx. 500 linhas por vez)
 
 GET    /api/categories
 GET    /api/tags
@@ -203,13 +204,13 @@ GET    /api/knowledge-base            (?q= para pesquisa — dados mockados)
 /chamados/novo           Criação de chamado
 /chamados/:id            Detalhe do chamado
 /agenda                  Calendário (dia/semana/mês), criar/editar/excluir/arrastar/redimensionar eventos
-/clientes                Lista e busca de clientes
+/clientes                Lista e busca de clientes, com importação e exportação CSV
 /clientes/novo           Cadastro de cliente
 /clientes/:id            Detalhe do cliente (indicadores, chamados, agenda, responsáveis)
 /clientes/:id/editar     Edição de cliente
 /base-de-conhecimento    Consulta a artigos (dados mockados)
 /equipe                  Gerenciamento de usuários (criar/editar/ativar/desativar) + métricas de produtividade
-/relatorios              Filtros (período/cliente/responsável/categoria/prioridade/status), gráficos e exportação CSV
+/relatorios              Filtros (período/cliente/responsável/categoria/prioridade/status), gráficos e exportação CSV/PDF
 /configuracoes           Status das integrações + testar/sincronizar TotalChat
 ```
 
@@ -271,6 +272,6 @@ A tela **Configurações → Integrações** nunca exibe uma integração como "
 ## Próxima etapa recomendada
 
 1. Usar o vínculo usuário↔atendente do TotalChat para atribuição automática de responsável em chamados criados via TotalChat.
-2. Exportação de relatórios em Excel e PDF (hoje só CSV).
+2. Exportação de relatórios em Excel (hoje já tem CSV e PDF).
 3. Conectar a API real da Base de Conhecimento, substituindo os dados mockados.
 4. Se o volume de usuários simultâneos crescer, migrar as notificações de polling para WebSocket.

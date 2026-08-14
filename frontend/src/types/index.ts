@@ -423,3 +423,8 @@ export interface AppNotification {
   relatedUrl: string | null;
   createdAt: string;
 }
+
+export interface CustomerImportResult {
+  created: number;
+  skipped: { row: number; name: string; reason?: string }[];
+}

@@ -31,6 +31,10 @@ export interface TeamMember {
   roleId: string;
   role: RoleName;
   createdAt: string;
+  ticketsAssigned: number;
+  ticketsResolved: number;
+  avgResolutionHours: number;
+  slaCompliancePercent: number | null;
 }
 
 export interface CreateUserInput {

@@ -2,7 +2,21 @@ import bcrypt from 'bcrypt';
 import { userRepository } from '../repositories/userRepository';
 import { AppError } from '../utils/AppError';
 
-function sanitize(user: Awaited<ReturnType<typeof userRepository.list>>[number]) {
+interface ProductivityStats {
+  ticketsAssigned: number;
+  ticketsResolved: number;
+  avgResolutionHours: number;
+  slaCompliancePercent: number | null;
+}
+
+const EMPTY_STATS: ProductivityStats = {
+  ticketsAssigned: 0,
+  ticketsResolved: 0,
+  avgResolutionHours: 0,
+  slaCompliancePercent: null,
+};
+
+function sanitize(user: Awaited<ReturnType<typeof userRepository.list>>[number], stats: ProductivityStats) {
   return {
     id: user.id,
     name: user.name,
@@ -14,6 +28,7 @@ function sanitize(user: Awaited<ReturnType<typeof userRepository.list>>[number])
     roleId: user.roleId,
     role: user.role.name,
     createdAt: user.createdAt,
+    ...stats,
   };
 }
 
@@ -38,8 +53,16 @@ interface UpdateUserInput {
 
 export const userService = {
   async list() {
-    const users = await userRepository.list();
-    return users.map(sanitize);
+    const [users, stats] = await Promise.all([userRepository.list(), userRepository.getProductivityStats()]);
+
+    return users.map((user) =>
+      sanitize(user, {
+        ticketsAssigned: stats.assignedMap.get(user.id) ?? 0,
+        ticketsResolved: stats.resolvedMap.get(user.id) ?? 0,
+        avgResolutionHours: Math.round((stats.avgMap.get(user.id) ?? 0) * 10) / 10,
+        slaCompliancePercent: stats.slaMap.get(user.id) ?? null,
+      }),
+    );
   },
 
   async create(input: CreateUserInput) {
@@ -59,7 +82,7 @@ export const userService = {
       role: { connect: { id: input.roleId } },
     });
 
-    return sanitize(user);
+    return sanitize(user, EMPTY_STATS);
   },
 
   async update(id: string, input: UpdateUserInput) {
@@ -85,6 +108,6 @@ export const userService = {
       role: input.roleId ? { connect: { id: input.roleId } } : undefined,
     });
 
-    return sanitize(user);
+    return sanitize(user, EMPTY_STATS);
   },
 };

@@ -2,7 +2,7 @@
 
 Sistema web interno para gestão da equipe de suporte e implantação de sistemas ERP. Centraliza chamados, agenda, clientes, equipe e indicadores de produtividade.
 
-> **Etapa atual: Etapa 6.** Fundação (Etapa 1), módulo completo de **Chamados** (Etapa 2), **integração real com o TotalChat** (client + sincronização automática), módulo completo de **Clientes**, módulo completo de **Agenda** e **gerenciamento de usuários** (criar/editar/ativar/desativar, com vínculo opcional ao atendente real do TotalChat) estão implementados. Métricas de produtividade na Equipe e Relatórios ainda são placeholders.
+> **Etapa atual: Etapa 7.** Fundação (Etapa 1), módulo completo de **Chamados** (Etapa 2), **integração real com o TotalChat** (client + sincronização automática), módulos completos de **Clientes**, **Agenda** e **Equipe** (gerenciamento de usuários + métricas de produtividade por colaborador) estão implementados. Apenas **Relatórios** ainda é placeholder.
 
 ---
 
@@ -200,7 +200,7 @@ GET    /api/knowledge-base            (?q= para pesquisa — dados mockados)
 /clientes/:id            Detalhe do cliente (indicadores, chamados, agenda, responsáveis)
 /clientes/:id/editar     Edição de cliente
 /base-de-conhecimento    Consulta a artigos (dados mockados)
-/equipe                  Lista de colaboradores
+/equipe                  Gerenciamento de usuários (criar/editar/ativar/desativar) + métricas de produtividade
 /relatorios              (placeholder — próxima etapa)
 /configuracoes           Status das integrações + testar/sincronizar TotalChat
 ```
@@ -248,8 +248,7 @@ A tela **Configurações → Integrações** nunca exibe uma integração como "
 
 ## Próxima etapa recomendada
 
-1. Métricas de produtividade na página **Equipe** (chamados atribuídos/resolvidos, tempo médio, SLA por colaborador).
-2. Módulo de **Relatórios** com filtros e exportação.
-3. Sistema de **Notificações** em tempo real.
-4. Usar o vínculo usuário↔atendente do TotalChat para atribuição automática de responsável em chamados criados via TotalChat.
-5. Conectar a API real da Base de Conhecimento, substituindo os dados mockados.
+1. Módulo de **Relatórios** com filtros e exportação.
+2. Sistema de **Notificações** em tempo real.
+3. Usar o vínculo usuário↔atendente do TotalChat para atribuição automática de responsável em chamados criados via TotalChat.
+4. Conectar a API real da Base de Conhecimento, substituindo os dados mockados.

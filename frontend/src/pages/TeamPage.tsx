@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { UserFormDialog } from '@/components/team/UserFormDialog';
 import { ROLE_LABELS } from '@/utils/roleLabels';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +22,15 @@ function initials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('');
+}
+
+function StatCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-sm font-semibold">{value}</p>
+      <p className="truncate text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    </div>
+  );
 }
 
 export function TeamPage() {
@@ -48,8 +58,7 @@ export function TeamPage() {
         <div>
           <h1 className="text-xl font-semibold">Equipe</h1>
           <p className="text-sm text-muted-foreground">
-            Colaboradores cadastrados no RT HELPDESK. Métricas de produtividade serão exibidas aqui em uma
-            próxima etapa.
+            Colaboradores cadastrados no RT HELPDESK e produtividade de cada um nos chamados.
           </p>
         </div>
         {canManage && (
@@ -63,7 +72,7 @@ export function TeamPage() {
       {isLoading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 5 }).map((_, index) => (
-            <Skeleton key={index} className="h-24 w-full" />
+            <Skeleton key={index} className="h-40 w-full" />
           ))}
         </div>
       )}
@@ -85,29 +94,46 @@ export function TeamPage() {
               className={canManage ? 'cursor-pointer hover:border-primary/40' : undefined}
               onClick={() => openEdit(member)}
             >
-              <CardContent className="flex items-center gap-3 p-4">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback>{initials(member.name)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <p className="truncate text-sm font-medium">{member.name}</p>
-                    {!member.active && (
-                      <Badge variant="secondary" className="shrink-0">
-                        Inativo
-                      </Badge>
-                    )}
+              <CardContent className="space-y-3 p-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback>{initials(member.name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-medium">{member.name}</p>
+                      {!member.active && (
+                        <Badge variant="secondary" className="shrink-0">
+                          Inativo
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="truncate text-xs text-muted-foreground">{member.jobTitle}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <Badge variant="secondary">{ROLE_LABELS[member.role]}</Badge>
+                      {member.totalchatAttendantId && (
+                        <Badge variant="outline" className="gap-1">
+                          <MessageSquare className="h-3 w-3" />
+                          TotalChat
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">{member.jobTitle}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <Badge variant="secondary">{ROLE_LABELS[member.role]}</Badge>
-                    {member.totalchatAttendantId && (
-                      <Badge variant="outline" className="gap-1">
-                        <MessageSquare className="h-3 w-3" />
-                        TotalChat
-                      </Badge>
-                    )}
-                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="grid grid-cols-4 gap-2">
+                  <StatCell label="Atribuídos" value={String(member.ticketsAssigned)} />
+                  <StatCell label="Resolvidos" value={String(member.ticketsResolved)} />
+                  <StatCell
+                    label="Tempo médio"
+                    value={member.avgResolutionHours > 0 ? `${member.avgResolutionHours}h` : '—'}
+                  />
+                  <StatCell
+                    label="SLA"
+                    value={member.slaCompliancePercent !== null ? `${member.slaCompliancePercent}%` : '—'}
+                  />
                 </div>
               </CardContent>
             </Card>

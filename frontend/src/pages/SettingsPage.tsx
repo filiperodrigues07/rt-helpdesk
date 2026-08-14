@@ -94,10 +94,11 @@ export function SettingsPage() {
       }
       const created = result.results?.filter((r) => r.action === 'created').length ?? 0;
       const updated = result.results?.filter((r) => r.action === 'updated').length ?? 0;
+      const skipped = result.results?.filter((r) => r.action === 'skipped').length ?? 0;
       const errors = result.results?.filter((r) => r.action === 'error').length ?? 0;
       toast({
         title: 'Sincronização concluída',
-        description: `${result.processedContacts ?? 0} contato(s) com mensagens — ${created} chamado(s) criado(s), ${updated} atualizado(s)${errors ? `, ${errors} com erro` : ''}.`,
+        description: `${result.processedContacts ?? 0} contato(s) com mensagens — ${created} chamado(s) criado(s), ${updated} atualizado(s)${skipped ? `, ${skipped} já processado(s)` : ''}${errors ? `, ${errors} com erro` : ''}.`,
       });
     },
     onError: () =>

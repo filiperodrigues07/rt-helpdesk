@@ -5,7 +5,12 @@ export interface TotalChatSyncResult {
   skipped: boolean;
   reason?: string;
   processedContacts?: number;
-  results?: { clienteId: number; action: 'created' | 'updated' | 'error'; ticketId?: string; error?: string }[];
+  results?: {
+    clienteId: number;
+    action: 'created' | 'updated' | 'skipped' | 'error';
+    ticketId?: string;
+    error?: string;
+  }[];
 }
 
 export const integrationService = {

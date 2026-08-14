@@ -8,13 +8,17 @@
 // Limitações conhecidas, por falta de informação na documentação oficial:
 // - Não há um "id de atendimento" confiável disponível a partir das mensagens
 //   não lidas, então `Ticket.totalchatConversationId` fica vazio por enquanto.
-// - `GetTodasMensagensNaoLidas` com marcaLida=true já marca as mensagens como
-//   lidas na própria chamada; se o processamento falhar depois de buscar mas
-//   antes de salvar no banco, a mensagem pode não ser reprocessada. Aceitável
-//   para uma primeira versão — revisar se isso causar perda de chamados.
 // - Prioridade e categoria não podem ser inferidas do texto da mensagem, então
 //   todo chamado automático nasce com prioridade NORMAL e sem categoria.
 // - Responsável não é atribuído automaticamente (sem regra definida ainda).
+//
+// `GetTodasMensagensNaoLidas` com marcaLida=true retorna HTTP 400 (bug do
+// próprio servidor do TotalChat, confirmado em 2026-08-14 — a chamada segue
+// exatamente o formato documentado). Por isso buscamos sempre com
+// marcaLida=false e controlamos "o que já foi processado" pelo nosso lado,
+// comparando o id de cada mensagem (`d`) com o maior `totalchatMessageId` já
+// salvo em algum chamado desse contato. Efeito colateral positivo: paramos de
+// marcar mensagens reais dos clientes como lidas no TotalChat.
 
 import { prisma } from '../../utils/prisma';
 import { env } from '../../utils/env';
@@ -22,6 +26,14 @@ import { totalChatClient } from './client';
 import { TotalChatMensagem } from './types';
 
 const MAX_PAGES_PER_SYNC = 10;
+// A API do TotalChat limita a ~2 requisições/segundo (header X-Rate-Limit-Limit: 1s,
+// observado em 2026-08-14) — sem essa pausa, o sync estourava o limite (HTTP 429)
+// já na segunda página ou no segundo contato processado.
+const REQUEST_THROTTLE_MS = 400;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, '');
@@ -88,6 +100,15 @@ async function findOpenTicketForContact(clienteId: number) {
   });
 }
 
+async function getLastProcessedMessageId(clienteId: number): Promise<number | null> {
+  const tickets = await prisma.ticket.findMany({
+    where: { totalchatContactId: String(clienteId), totalchatMessageId: { not: null } },
+    select: { totalchatMessageId: true },
+  });
+  if (tickets.length === 0) return null;
+  return Math.max(...tickets.map((ticket) => Number(ticket.totalchatMessageId)));
+}
+
 function messagesToDescription(messages: TotalChatMensagem[]): string {
   return messages
     .filter((msg) => msg.s === 0)
@@ -98,11 +119,28 @@ function messagesToDescription(messages: TotalChatMensagem[]): string {
 }
 
 async function processContactMessages(clienteId: number, messages: TotalChatMensagem[]) {
-  const contato = await totalChatClient.getContatoPorId(clienteId);
-  const contact = await findOrCreateCustomerContact(clienteId, contato.nome, contato.telefone);
+  const sorted = [...messages].sort((a, b) => a.d - b.d);
+  const lastProcessedId = await getLastProcessedMessageId(clienteId);
+  const newMessages = lastProcessedId !== null ? sorted.filter((msg) => msg.d > lastProcessedId) : sorted;
 
-  const description = messagesToDescription(messages) || '(mensagem sem texto — anexo/mídia)';
-  const lastMessage = messages[messages.length - 1];
+  if (newMessages.length === 0) {
+    return { action: 'skipped' as const };
+  }
+
+  // `GetContatoPorId` retorna `{}` (200 OK, sem erro) para diversos clientes reais e
+  // válidos — bug confirmado no servidor do TotalChat em 2026-08-14, na mesma linha do
+  // bug do marcaLida. Por isso não confiamos cegamente nele: usamos o nome do contato
+  // se vier preenchido e, se não vier, caímos para o campo `f` (nome de quem enviou) da
+  // última mensagem recebida, e por último um rótulo genérico — nunca deixamos a
+  // sincronização falhar por falta desse dado auxiliar.
+  const contato = await totalChatClient.getContatoPorId(clienteId).catch(() => null);
+  const fallbackName = [...newMessages].reverse().find((msg) => msg.s === 0)?.f;
+  const nome = contato?.nome || fallbackName || `Contato TotalChat #${clienteId}`;
+  const telefone = contato?.telefone || '';
+  const contact = await findOrCreateCustomerContact(clienteId, nome, telefone);
+
+  const description = messagesToDescription(newMessages) || '(mensagem sem texto — anexo/mídia)';
+  const lastMessage = newMessages[newMessages.length - 1];
 
   const existingTicket = await findOpenTicketForContact(clienteId);
 
@@ -134,7 +172,7 @@ async function processContactMessages(clienteId: number, messages: TotalChatMens
 
   const ticket = await prisma.ticket.create({
     data: {
-      title: `Atendimento via TotalChat — ${contato.nome || contato.telefone}`,
+      title: `Atendimento via TotalChat — ${nome}`,
       description,
       customerId: contact.customerId,
       priority: 'NORMAL',
@@ -174,6 +212,7 @@ export const totalChatService = {
 
     const attendants = [];
     for (let pag = 0; pag < 5; pag++) {
+      if (pag > 0) await delay(REQUEST_THROTTLE_MS);
       const page = await totalChatClient.listaUsuarios(pag);
       if (page.length === 0) break;
       attendants.push(...page);
@@ -192,24 +231,40 @@ export const totalChatService = {
       return { skipped: true, reason: 'not_configured' as const };
     }
 
-    const messagesByClient = new Map<number, TotalChatMensagem[]>();
+    // Com marcaLida=false, as páginas não são estritamente disjuntas — a mesma
+    // mensagem pode aparecer em mais de uma página. Dedupe por id da mensagem (`d`).
+    const messagesById = new Map<number, TotalChatMensagem>();
 
     for (let pag = 0; pag < MAX_PAGES_PER_SYNC; pag++) {
-      const page = await totalChatClient.getTodasMensagensNaoLidas(pag, true);
+      if (pag > 0) await delay(REQUEST_THROTTLE_MS);
+      const page = await totalChatClient.getTodasMensagensNaoLidas(pag, false);
       if (page.length === 0) break;
 
       for (const message of page) {
-        const list = messagesByClient.get(message.i) ?? [];
-        list.push(message);
-        messagesByClient.set(message.i, list);
+        messagesById.set(message.d, message);
       }
 
       if (page.length < 70) break;
     }
 
-    const results: { clienteId: number; action: 'created' | 'updated' | 'error'; ticketId?: string; error?: string }[] = [];
+    const messagesByClient = new Map<number, TotalChatMensagem[]>();
+    for (const message of messagesById.values()) {
+      const list = messagesByClient.get(message.i) ?? [];
+      list.push(message);
+      messagesByClient.set(message.i, list);
+    }
 
+    const results: {
+      clienteId: number;
+      action: 'created' | 'updated' | 'skipped' | 'error';
+      ticketId?: string;
+      error?: string;
+    }[] = [];
+
+    let index = 0;
     for (const [clienteId, messages] of messagesByClient) {
+      if (index > 0) await delay(REQUEST_THROTTLE_MS);
+      index += 1;
       try {
         const result = await processContactMessages(clienteId, messages);
         results.push({ clienteId, ...result });

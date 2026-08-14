@@ -35,6 +35,10 @@ export const customerService = {
     return data.data;
   },
 
+  async remove(id: string) {
+    await api.delete<ApiSuccess<{ success: boolean }>>(`/customers/${id}`);
+  },
+
   async importBatch(rows: CustomerInput[]) {
     const { data } = await api.post<ApiSuccess<CustomerImportResult>>('/customers/import', { rows });
     return data.data;

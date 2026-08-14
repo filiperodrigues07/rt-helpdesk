@@ -166,6 +166,7 @@ GET    /api/customers/minimal         (lista leve — para uso em formulários)
 POST   /api/customers
 GET    /api/customers/:id             (com indicadores, chamados recentes, agenda, responsáveis)
 PATCH  /api/customers/:id
+DELETE /api/customers/:id             (bloqueada se o cliente tiver chamados vinculados)
 POST   /api/customers/import          (importação em lote via CSV — máx. 500 linhas por vez)
 
 GET    /api/categories
@@ -214,7 +215,7 @@ GET    /api/knowledge-base            (?q= para pesquisa — dados mockados)
 /clientes                Lista e busca de clientes, com importação e exportação CSV
 /clientes/novo           Cadastro de cliente
 /clientes/:id            Detalhe do cliente (indicadores, chamados, agenda, responsáveis)
-/clientes/:id/editar     Edição de cliente
+/clientes/:id/editar     Edição de cliente, com opção de excluir o cadastro (bloqueada se houver chamados vinculados)
 /base-de-conhecimento    Consulta a artigos (dados mockados)
 /equipe                  Gerenciamento de usuários (criar/editar/ativar/desativar/excluir) + métricas de produtividade
 /relatorios              Filtros (período/cliente/responsável/categoria/prioridade/status), gráficos e exportação CSV/PDF

@@ -99,4 +99,9 @@ export const customerController = {
     const result = await customerService.importBatch(rows.map(sanitizeImportRow));
     return ok(res, result);
   },
+
+  async remove(req: Request, res: Response) {
+    await customerService.delete(req.params.id);
+    return ok(res, { success: true });
+  },
 };

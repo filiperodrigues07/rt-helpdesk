@@ -58,6 +58,23 @@ export const customerService = {
     return customerRepository.update(id, input);
   },
 
+  async delete(id: string) {
+    const customer = await customerRepository.findById(id);
+    if (!customer) {
+      throw new AppError('Cliente não encontrado', 404);
+    }
+
+    const ticketCount = await customerRepository.countTickets(id);
+    if (ticketCount > 0) {
+      throw new AppError(
+        'Não é possível excluir um cliente com chamados vinculados. Os chamados precisam ser reatribuídos ou removidos primeiro.',
+        400,
+      );
+    }
+
+    await customerRepository.delete(id);
+  },
+
   async importBatch(rows: CustomerInput[]) {
     const results: { row: number; status: 'created' | 'skipped'; name: string; reason?: string }[] = [];
 

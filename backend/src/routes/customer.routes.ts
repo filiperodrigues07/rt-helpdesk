@@ -12,3 +12,4 @@ customerRoutes.post('/import', asyncHandler(customerController.importBatch));
 customerRoutes.post('/', asyncHandler(customerController.create));
 customerRoutes.get('/:id', asyncHandler(customerController.getById));
 customerRoutes.patch('/:id', asyncHandler(customerController.update));
+customerRoutes.delete('/:id', asyncHandler(customerController.remove));

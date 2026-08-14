@@ -69,6 +69,14 @@ export const customerRepository = {
     return prisma.customer.update({ where: { id }, data });
   },
 
+  countTickets(id: string) {
+    return prisma.ticket.count({ where: { customerId: id } });
+  },
+
+  async delete(id: string) {
+    await prisma.customer.delete({ where: { id } });
+  },
+
   async getIndicators(customerId: string) {
     const [byStatus, resolvedAgg, byAssigneeRaw, appointments, recentTickets] = await Promise.all([
       prisma.ticket.groupBy({ by: ['status'], where: { customerId }, _count: { _all: true } }),

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCustomer } from '@/hooks/useCustomers';
-import { useCreateCustomer, useUpdateCustomer } from '@/hooks/useCustomerMutations';
+import { useCreateCustomer, useDeleteCustomer, useUpdateCustomer } from '@/hooks/useCustomerMutations';
 import { toast } from '@/hooks/use-toast';
 import type { CustomerInput } from '@/types';
 
@@ -30,8 +30,14 @@ export function CustomerFormPage() {
   const { data: customer, isLoading } = useCustomer(id);
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer(id ?? '');
+  const deleteCustomer = useDeleteCustomer();
+  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
 
   const [form, setForm] = React.useState<CustomerInput>(EMPTY_FORM);
+
+  React.useEffect(() => {
+    setConfirmingDelete(false);
+  }, [id]);
 
   React.useEffect(() => {
     if (customer) {
@@ -68,6 +74,20 @@ export function CustomerFormPage() {
         (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ??
         'Verifique os dados e tente novamente.';
       toast({ variant: 'destructive', title: 'Erro ao salvar cliente', description: message });
+    }
+  }
+
+  async function handleDelete() {
+    if (!id) return;
+    try {
+      await deleteCustomer.mutateAsync(id);
+      toast({ title: 'Cliente excluído' });
+      navigate('/clientes');
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ??
+        'Tente novamente.';
+      toast({ variant: 'destructive', title: 'Erro ao excluir cliente', description: message });
     }
   }
 
@@ -160,14 +180,49 @@ export function CustomerFormPage() {
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isEditing ? 'Salvar alterações' : 'Cadastrar cliente'}
-              </Button>
+            <div className="flex items-center justify-between gap-2 pt-2">
+              {isEditing ? (
+                confirmingDelete ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Excluir este cliente?</span>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      disabled={deleteCustomer.isPending}
+                      onClick={handleDelete}
+                    >
+                      {deleteCustomer.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      Confirmar
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmingDelete(false)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setConfirmingDelete(true)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir
+                  </Button>
+                )
+              ) : (
+                <span />
+              )}
+
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isEditing ? 'Salvar alterações' : 'Cadastrar cliente'}
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>

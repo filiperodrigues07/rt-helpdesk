@@ -111,6 +111,29 @@ export interface CustomerAppointment {
   assignee: BasicUser | null;
 }
 
+export interface Appointment {
+  id: string;
+  title: string;
+  type: AppointmentType;
+  description: string | null;
+  notes: string | null;
+  startsAt: string;
+  endsAt: string;
+  customer: BasicCustomer | null;
+  assignee: BasicUser | null;
+}
+
+export interface AppointmentInput {
+  title: string;
+  type: AppointmentType;
+  customerId?: string | null;
+  assigneeId?: string | null;
+  startsAt: string;
+  endsAt: string;
+  description?: string;
+  notes?: string;
+}
+
 export interface CustomerRecentTicket {
   id: string;
   number: number;

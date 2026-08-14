@@ -1,0 +1,83 @@
+/* Tema do FullCalendar alinhado aos tokens do RT HELPDESK (dark/light). */
+
+.fc {
+  --fc-page-bg-color: transparent;
+  --fc-border-color: hsl(var(--border));
+  --fc-neutral-bg-color: hsl(var(--muted));
+  --fc-neutral-text-color: hsl(var(--muted-foreground));
+
+  --fc-button-text-color: hsl(var(--foreground));
+  --fc-button-bg-color: hsl(var(--secondary));
+  --fc-button-border-color: hsl(var(--border));
+  --fc-button-hover-bg-color: hsl(var(--accent));
+  --fc-button-hover-border-color: hsl(var(--border));
+  --fc-button-active-bg-color: hsl(var(--primary));
+  --fc-button-active-border-color: hsl(var(--primary));
+
+  --fc-today-bg-color: hsl(var(--primary) / 0.08);
+  --fc-now-indicator-color: hsl(var(--destructive));
+  --fc-highlight-color: hsl(var(--primary) / 0.15);
+
+  color: hsl(var(--foreground));
+  font-family: inherit;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.fc .fc-button {
+  box-shadow: none !important;
+  border-radius: 0.375rem;
+  text-transform: capitalize;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.fc .fc-button-primary:focus,
+.fc .fc-button:focus {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4) !important;
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  color: hsl(var(--primary));
+  font-weight: 700;
+}
+
+.fc .fc-timegrid-slot-label,
+.fc .fc-timegrid-axis {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+}
+
+.fc-theme-standard .fc-scrollgrid,
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: hsl(var(--border));
+}
+
+.fc .fc-event {
+  border-radius: 0.25rem;
+  padding: 1px 4px;
+  font-size: 0.75rem;
+  border: none;
+  cursor: pointer;
+}
+
+.fc .fc-daygrid-event-dot {
+  display: none;
+}
+
+.fc .fc-list,
+.fc .fc-list-day-cushion {
+  background-color: transparent;
+}

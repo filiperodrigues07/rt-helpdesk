@@ -272,6 +272,16 @@ async function main() {
     'INTERNO',
   ];
 
+  const appointmentTypeLabels: Record<AppointmentType, string> = {
+    SUPORTE: 'Suporte',
+    IMPLANTACAO: 'Implantação',
+    TREINAMENTO: 'Treinamento',
+    REUNIAO: 'Reunião',
+    VISITA_TECNICA: 'Visita técnica',
+    RETORNO_CLIENTE: 'Retorno ao cliente',
+    INTERNO: 'Interno',
+  };
+
   const existingAppointments = await prisma.appointment.count();
   if (existingAppointments === 0) {
     for (let i = 0; i < 10; i++) {
@@ -281,7 +291,7 @@ async function main() {
 
       await prisma.appointment.create({
         data: {
-          title: `${appointmentTypes[i % appointmentTypes.length]} - ${customers[i % customers.length].tradeName}`,
+          title: `${appointmentTypeLabels[appointmentTypes[i % appointmentTypes.length]]} - ${customers[i % customers.length].tradeName}`,
           type: appointmentTypes[i % appointmentTypes.length],
           customerId: customers[i % customers.length].id,
           assigneeId: users[i % users.length].id,

@@ -2,13 +2,13 @@
 
 Sistema web interno para gestão da equipe de suporte e implantação de sistemas ERP. Centraliza chamados, agenda, clientes, equipe e indicadores de produtividade.
 
-> **Etapa atual: Etapa 4.** Fundação (Etapa 1), módulo completo de **Chamados** (Etapa 2), **integração real com o TotalChat** (client + sincronização automática) e módulo completo de **Clientes** (cadastro, busca, página de detalhe com indicadores/chamados/agenda/responsáveis) estão implementados. Agenda, Equipe (métricas) e Relatórios ainda são placeholders.
+> **Etapa atual: Etapa 5.** Fundação (Etapa 1), módulo completo de **Chamados** (Etapa 2), **integração real com o TotalChat** (client + sincronização automática), módulo completo de **Clientes** (cadastro, busca, página de detalhe com indicadores/chamados/agenda/responsáveis) e módulo completo de **Agenda** (dia/semana/mês, criar/editar/excluir/arrastar/redimensionar) estão implementados. Equipe (métricas) e Relatórios ainda são placeholders.
 
 ---
 
 ## Stack
 
-**Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui (componentes Radix), React Router, TanStack Query, Lucide Icons, Recharts.
+**Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui (componentes Radix), React Router, TanStack Query, Lucide Icons, Recharts, FullCalendar, @dnd-kit.
 
 **Backend:** Node.js, TypeScript, Express, JWT, bcrypt, Zod.
 
@@ -157,6 +157,12 @@ PATCH  /api/customers/:id
 GET    /api/categories
 GET    /api/tags
 
+GET    /api/appointments?start=&end=  (eventos da agenda no período)
+POST   /api/appointments
+GET    /api/appointments/:id
+PATCH  /api/appointments/:id
+DELETE /api/appointments/:id
+
 GET    /api/tickets                   (filtros, ordenação, paginação)
 GET    /api/tickets/board             (todos os chamados, para o Kanban)
 POST   /api/tickets
@@ -182,7 +188,7 @@ GET    /api/knowledge-base            (?q= para pesquisa — dados mockados)
 /chamados                Lista e Kanban de chamados
 /chamados/novo           Criação de chamado
 /chamados/:id            Detalhe do chamado
-/agenda                  (placeholder — próxima etapa)
+/agenda                  Calendário (dia/semana/mês), criar/editar/excluir/arrastar/redimensionar eventos
 /clientes                Lista e busca de clientes
 /clientes/novo           Cadastro de cliente
 /clientes/:id            Detalhe do cliente (indicadores, chamados, agenda, responsáveis)
@@ -236,9 +242,8 @@ A tela **Configurações → Integrações** nunca exibe uma integração como "
 
 ## Próxima etapa recomendada
 
-1. Módulo de **Agenda** (visualizações dia/semana/mês, criação e drag-and-drop de eventos).
-2. Métricas de produtividade na página **Equipe**.
-3. Módulo de **Relatórios** com filtros e exportação.
-4. Sistema de **Notificações** em tempo real.
-5. Regra de atribuição automática de responsável para chamados criados via TotalChat.
-6. Conectar a API real da Base de Conhecimento, substituindo os dados mockados.
+1. Métricas de produtividade na página **Equipe**.
+2. Módulo de **Relatórios** com filtros e exportação.
+3. Sistema de **Notificações** em tempo real.
+4. Regra de atribuição automática de responsável para chamados criados via TotalChat.
+5. Conectar a API real da Base de Conhecimento, substituindo os dados mockados.

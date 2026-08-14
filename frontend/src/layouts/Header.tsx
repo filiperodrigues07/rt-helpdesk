@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserMenu } from '@/components/UserMenu';
 import { GlobalSearch } from '@/components/GlobalSearch';
-import { toast } from '@/hooks/use-toast';
 
 const SECTION_LABELS: Record<string, string> = {
   '': 'Dashboard',
@@ -136,13 +135,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => navigate('/chamados/novo')}>Novo chamado</DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                toast({ title: 'Em breve', description: 'Criação rápida de eventos será liberada na próxima etapa.' })
-              }
-            >
-              Novo evento na agenda
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/agenda')}>Novo evento na agenda</DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/clientes/novo')}>Novo cliente</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

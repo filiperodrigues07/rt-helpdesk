@@ -1,4 +1,5 @@
 import { knowledgeBaseClient } from './client';
+import { KnowledgeBaseArticleInput } from './types';
 
 export const knowledgeBaseService = {
   async getIntegrationStatus() {
@@ -8,15 +9,27 @@ export const knowledgeBaseService = {
     };
   },
 
-  listArticles() {
-    return knowledgeBaseClient.listArticles();
+  listArticles(query?: string) {
+    return knowledgeBaseClient.listArticles(query);
   },
 
   getArticleById(id: string) {
     return knowledgeBaseClient.getArticleById(id);
   },
 
-  searchArticles(query: string) {
-    return knowledgeBaseClient.searchArticles(query);
+  listCategories() {
+    return knowledgeBaseClient.listCategories();
+  },
+
+  createArticle(input: KnowledgeBaseArticleInput) {
+    return knowledgeBaseClient.createArticle(input);
+  },
+
+  updateArticle(id: string, input: Partial<KnowledgeBaseArticleInput>) {
+    return knowledgeBaseClient.updateArticle(id, input);
+  },
+
+  deleteArticle(id: string) {
+    return knowledgeBaseClient.deleteArticle(id);
   },
 };

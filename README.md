@@ -2,7 +2,7 @@
 
 Sistema web interno para gestão da equipe de suporte e implantação de sistemas ERP. Centraliza chamados, agenda, clientes, equipe e indicadores de produtividade.
 
-> **Etapa atual: Etapa 12.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes** (com importação/exportação CSV e exclusão), **Agenda**, **Equipe** (usuários + produtividade, com exclusão), **Relatórios** (filtros, gráficos e exportação CSV/PDF), **Notificações** (central no header, por polling) e **Base de Conhecimento** (conectada à API real do site Gestão). Além disso: **logo customizável** (Configurações → Identidade visual, refletida na Sidebar e na tela de login) e **autoatendimento de perfil** (menu "Meu perfil": upload de foto, edição de dados e troca de senha). O que resta é evolução: atribuição automática via TotalChat e exportação de relatórios em Excel.
+> **Etapa atual: Etapa 12.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes** (com importação/exportação CSV e exclusão), **Agenda**, **Equipe** (usuários + produtividade, com exclusão), **Relatórios** (filtros, gráficos e exportação CSV/PDF), **Notificações** (central no header, por polling) e **Base de Conhecimento** (CRUD completo via API real do site Gestão — ver, criar, editar e excluir artigos sem sair do sistema). Além disso: **logo customizável** (Configurações → Identidade visual, refletida na Sidebar e na tela de login) e **autoatendimento de perfil** (menu "Meu perfil": upload de foto, edição de dados e troca de senha). O que resta é evolução: atribuição automática via TotalChat e exportação de relatórios em Excel.
 
 ---
 
@@ -41,7 +41,7 @@ rt-helpdesk/
 │       ├── middlewares/
 │       ├── integrations/
 │       │   ├── totalchat/       # Integração real (client + polling) — ver seção abaixo
-│       │   └── knowledge-base/  # Dados mockados até a API real ser fornecida
+│       │   └── knowledge-base/  # API real do site Gestão (CRUD completo); mock só se não configurada
 │       └── utils/
 ├── prisma/
 │   ├── schema.prisma
@@ -200,7 +200,12 @@ GET    /api/integrations
 POST   /api/integrations/totalchat/test    (testa login — sem efeitos colaterais)
 POST   /api/integrations/totalchat/sync    (sincronização manual — ver aviso na seção TotalChat)
 
-GET    /api/knowledge-base            (?q= para pesquisa — dados mockados)
+GET    /api/knowledge-base            (?q= para pesquisa — inclui rascunhos, API real do site Gestão)
+GET    /api/knowledge-base/categories (categorias disponíveis, para o formulário de artigo)
+GET    /api/knowledge-base/:id        (artigo com conteúdo completo)
+POST   /api/knowledge-base            (cria artigo — Administrador/Gerente)
+PATCH  /api/knowledge-base/:id        (atualiza, incl. status rascunho/publicado — Administrador/Gerente)
+DELETE /api/knowledge-base/:id        (Administrador/Gerente)
 ```
 
 ## Rotas do frontend
@@ -216,7 +221,7 @@ GET    /api/knowledge-base            (?q= para pesquisa — dados mockados)
 /clientes/novo           Cadastro de cliente
 /clientes/:id            Detalhe do cliente (indicadores, chamados, agenda, responsáveis)
 /clientes/:id/editar     Edição de cliente, com opção de excluir o cadastro (bloqueada se houver chamados vinculados)
-/base-de-conhecimento    Consulta a artigos (dados mockados)
+/base-de-conhecimento    Artigos da API real do site Gestão — ver conteúdo completo inline, criar, editar e excluir (Administrador/Gerente)
 /equipe                  Gerenciamento de usuários (criar/editar/ativar/desativar/excluir) + métricas de produtividade
 /relatorios              Filtros (período/cliente/responsável/categoria/prioridade/status), gráficos e exportação CSV/PDF
 /configuracoes           Identidade visual (logo customizável) + status das integrações + testar/sincronizar TotalChat
@@ -276,10 +281,12 @@ Pontos importantes:
 
 ### Base de Conhecimento
 
-**Implementada e conectada à API real** do site Gestão (`https://gestaoconsultorias.fly.dev`), que expõe `GET /api/knowledge-base/articles` (protegido por header `X-API-Key`, retorna só artigos com status `published`). A Base de Conhecimento não é duplicada aqui — o RT HELPDESK só consulta esse endpoint (`backend/src/integrations/knowledge-base/`).
+**Via API real do site Gestão** (`https://gestaoconsultorias.fly.dev/api/knowledge-base/*`, protegida por header `X-API-Key`) — não é só leitura, é uma integração de mão dupla: o RT HELPDESK lista, visualiza (conteúdo completo renderizado como markdown, sem sair do sistema), cria, edita e exclui artigos, e tudo reflete no site Gestão imediatamente (e vice-versa — artigos criados pelo painel do próprio site aparecem aqui também).
 
-- Configurar `KNOWLEDGE_BASE_API_URL` e `KNOWLEDGE_BASE_API_KEY` no `.env` (mesma chave configurada como secret `KB_API_KEY` no Fly.io do site Gestão). Sem essas variáveis, o client cai automaticamente para os dados mockados que já existiam, então o ambiente continua funcional sem a integração real.
-- Suporta busca (`?q=`, aplicada em título/resumo) e listagem — é o que a tela **Base de Conhecimento** usa.
+- Configurar `KNOWLEDGE_BASE_API_URL` e `KNOWLEDGE_BASE_API_KEY` no `.env` (mesma chave configurada como secret `KB_API_KEY` no Fly.io do site Gestão). Sem essas variáveis, o client cai automaticamente para dados mockados somente-leitura, então o ambiente continua funcional sem a integração real.
+- Tela **Base de Conhecimento**: clicar num artigo abre o conteúdo completo (markdown, com imagens) num diálogo — nunca abre o site em nova aba. Botão **Novo artigo** (Administrador/Gerente) cria com status Rascunho ou Publicado; editar/excluir também ficam disponíveis a partir do artigo aberto.
+- Rascunhos (`status: draft`) aparecem normalmente para a equipe no RT HELPDESK (com badge "Rascunho"), mas não aparecem na página pública do site até serem publicados — o filtro de "só publicados" é o padrão da API quando chamada sem o parâmetro `status`.
+- Slug do artigo é gerado automaticamente a partir do título pelo lado do site Gestão (garante unicidade); RT HELPDESK não precisa se preocupar com isso.
 
 A tela **Configurações → Integrações** nunca exibe uma integração como "Conectada" sem que ela esteja de fato configurada.
 

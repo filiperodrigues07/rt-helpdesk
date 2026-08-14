@@ -114,3 +114,52 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.4);
 }
+
+.prose-kb h1,
+.prose-kb h2,
+.prose-kb h3 {
+  @apply mb-2 mt-4 font-semibold text-foreground first:mt-0;
+}
+.prose-kb h1 {
+  @apply text-lg;
+}
+.prose-kb h2 {
+  @apply text-base;
+}
+.prose-kb h3 {
+  @apply text-sm;
+}
+.prose-kb p {
+  @apply mb-3;
+}
+.prose-kb ul {
+  @apply mb-3 list-disc space-y-1 pl-5;
+}
+.prose-kb ol {
+  @apply mb-3 list-decimal space-y-1 pl-5;
+}
+.prose-kb a {
+  @apply text-primary underline underline-offset-2;
+}
+.prose-kb strong {
+  @apply font-semibold text-foreground;
+}
+.prose-kb code {
+  @apply rounded bg-muted px-1 py-0.5 text-xs;
+}
+.prose-kb pre {
+  @apply mb-3 overflow-x-auto rounded-md bg-muted p-3;
+}
+.prose-kb blockquote {
+  @apply mb-3 border-l-2 border-border pl-3 text-muted-foreground;
+}
+.prose-kb img {
+  @apply mb-3 max-w-full;
+}
+.prose-kb table {
+  @apply mb-3 w-full border-collapse text-xs;
+}
+.prose-kb th,
+.prose-kb td {
+  @apply border border-border px-2 py-1 text-left;
+}

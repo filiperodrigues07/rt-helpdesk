@@ -2,7 +2,7 @@
 
 Sistema web interno para gestão da equipe de suporte e implantação de sistemas ERP. Centraliza chamados, agenda, clientes, equipe e indicadores de produtividade.
 
-> **Etapa atual: Etapa 5.** Fundação (Etapa 1), módulo completo de **Chamados** (Etapa 2), **integração real com o TotalChat** (client + sincronização automática), módulo completo de **Clientes** (cadastro, busca, página de detalhe com indicadores/chamados/agenda/responsáveis) e módulo completo de **Agenda** (dia/semana/mês, criar/editar/excluir/arrastar/redimensionar) estão implementados. Equipe (métricas) e Relatórios ainda são placeholders.
+> **Etapa atual: Etapa 6.** Fundação (Etapa 1), módulo completo de **Chamados** (Etapa 2), **integração real com o TotalChat** (client + sincronização automática), módulo completo de **Clientes**, módulo completo de **Agenda** e **gerenciamento de usuários** (criar/editar/ativar/desativar, com vínculo opcional ao atendente real do TotalChat) estão implementados. Métricas de produtividade na Equipe e Relatórios ainda são placeholders.
 
 ---
 
@@ -145,6 +145,12 @@ POST   /api/auth/login
 GET    /api/auth/me
 
 GET    /api/users
+POST   /api/users
+PATCH  /api/users/:id
+
+GET    /api/roles                     (papéis disponíveis, para formulários)
+
+GET    /api/integrations/totalchat/attendants  (atendentes reais do TotalChat, para vincular a um usuário)
 
 GET    /api/dashboard/summary
 
@@ -242,8 +248,8 @@ A tela **Configurações → Integrações** nunca exibe uma integração como "
 
 ## Próxima etapa recomendada
 
-1. Métricas de produtividade na página **Equipe**.
+1. Métricas de produtividade na página **Equipe** (chamados atribuídos/resolvidos, tempo médio, SLA por colaborador).
 2. Módulo de **Relatórios** com filtros e exportação.
 3. Sistema de **Notificações** em tempo real.
-4. Regra de atribuição automática de responsável para chamados criados via TotalChat.
+4. Usar o vínculo usuário↔atendente do TotalChat para atribuição automática de responsável em chamados criados via TotalChat.
 5. Conectar a API real da Base de Conhecimento, substituindo os dados mockados.

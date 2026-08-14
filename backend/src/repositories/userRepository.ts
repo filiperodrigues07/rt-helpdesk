@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma';
 
 export const userRepository = {
@@ -20,5 +21,13 @@ export const userRepository = {
       include: { role: true },
       orderBy: { name: 'asc' },
     });
+  },
+
+  create(data: Prisma.UserCreateInput) {
+    return prisma.user.create({ data, include: { role: true } });
+  },
+
+  update(id: string, data: Prisma.UserUpdateInput) {
+    return prisma.user.update({ where: { id }, data, include: { role: true } });
   },
 };

@@ -114,6 +114,9 @@ model User {
   avatarUrl    String?
   active       Boolean  @default(true)
 
+  // Vínculo opcional com o atendente correspondente no TotalChat (id numérico da API).
+  totalchatAttendantId String? @unique
+
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 

@@ -9,3 +9,4 @@ integrationRoutes.use(authenticate);
 integrationRoutes.get('/', asyncHandler(integrationController.list));
 integrationRoutes.post('/totalchat/test', asyncHandler(integrationController.testTotalChat));
 integrationRoutes.post('/totalchat/sync', asyncHandler(integrationController.syncTotalChat));
+integrationRoutes.get('/totalchat/attendants', asyncHandler(integrationController.listTotalChatAttendants));

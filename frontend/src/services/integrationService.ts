@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { ApiSuccess, IntegrationInfo } from '@/types';
+import type { ApiSuccess, IntegrationInfo, TotalChatAttendant } from '@/types';
 
 export interface TotalChatSyncResult {
   skipped: boolean;
@@ -21,6 +21,11 @@ export const integrationService = {
 
   async syncTotalChat() {
     const { data } = await api.post<ApiSuccess<TotalChatSyncResult>>('/integrations/totalchat/sync');
+    return data.data;
+  },
+
+  async listTotalChatAttendants() {
+    const { data } = await api.get<ApiSuccess<TotalChatAttendant[]>>('/integrations/totalchat/attendants');
     return data.data;
   },
 };

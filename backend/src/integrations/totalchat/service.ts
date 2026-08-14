@@ -167,6 +167,26 @@ export const totalChatService = {
     return { configured: true };
   },
 
+  async listAttendants() {
+    if (!totalChatClient.isConfigured()) {
+      return [];
+    }
+
+    const attendants = [];
+    for (let pag = 0; pag < 5; pag++) {
+      const page = await totalChatClient.listaUsuarios(pag);
+      if (page.length === 0) break;
+      attendants.push(...page);
+      if (page.length < 70) break;
+    }
+
+    return attendants.map((attendant) => ({
+      id: String(attendant.id),
+      nome: attendant.nomeAparente,
+      departamento: attendant.nomeDepartamento,
+    }));
+  },
+
   async syncTickets() {
     if (!totalChatClient.isConfigured()) {
       return { skipped: true, reason: 'not_configured' as const };

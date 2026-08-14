@@ -1,18 +1,18 @@
+import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { UsersRound } from 'lucide-react';
+import { MessageSquare, Plus, UsersRound } from 'lucide-react';
 import { userService } from '@/services/userService';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserFormDialog } from '@/components/team/UserFormDialog';
+import { ROLE_LABELS } from '@/utils/roleLabels';
+import { useAuth } from '@/contexts/AuthContext';
+import type { TeamMember } from '@/types';
 
-const ROLE_LABELS: Record<string, string> = {
-  ADMINISTRADOR: 'Administrador',
-  GERENTE: 'Gerente',
-  SUPORTE: 'Suporte',
-  IMPLANTACAO: 'Implantação',
-  VISUALIZACAO: 'Visualização',
-};
+const CAN_MANAGE_ROLES = ['ADMINISTRADOR', 'GERENTE'];
 
 function initials(name: string) {
   return name
@@ -24,16 +24,40 @@ function initials(name: string) {
 }
 
 export function TeamPage() {
+  const { user: currentUser } = useAuth();
+  const canManage = !!currentUser && CAN_MANAGE_ROLES.includes(currentUser.role);
+
   const { data, isLoading } = useQuery({ queryKey: ['users'], queryFn: userService.list });
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [selectedUser, setSelectedUser] = React.useState<TeamMember | null>(null);
+
+  function openCreate() {
+    setSelectedUser(null);
+    setDialogOpen(true);
+  }
+
+  function openEdit(member: TeamMember) {
+    if (!canManage) return;
+    setSelectedUser(member);
+    setDialogOpen(true);
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Equipe</h1>
-        <p className="text-sm text-muted-foreground">
-          Colaboradores cadastrados no RT HELPDESK. Métricas de produtividade serão exibidas aqui na próxima
-          etapa, junto ao módulo de Chamados.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Equipe</h1>
+          <p className="text-sm text-muted-foreground">
+            Colaboradores cadastrados no RT HELPDESK. Métricas de produtividade serão exibidas aqui em uma
+            próxima etapa.
+          </p>
+        </div>
+        {canManage && (
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Novo usuário
+          </Button>
+        )}
       </div>
 
       {isLoading && (
@@ -56,23 +80,42 @@ export function TeamPage() {
       {data && data.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.map((member) => (
-            <Card key={member.id}>
+            <Card
+              key={member.id}
+              className={canManage ? 'cursor-pointer hover:border-primary/40' : undefined}
+              onClick={() => openEdit(member)}
+            >
               <CardContent className="flex items-center gap-3 p-4">
                 <Avatar className="h-10 w-10">
                   <AvatarFallback>{initials(member.name)}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{member.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-medium">{member.name}</p>
+                    {!member.active && (
+                      <Badge variant="secondary" className="shrink-0">
+                        Inativo
+                      </Badge>
+                    )}
+                  </div>
                   <p className="truncate text-xs text-muted-foreground">{member.jobTitle}</p>
-                  <Badge variant="secondary" className="mt-1">
-                    {ROLE_LABELS[member.role] ?? member.role}
-                  </Badge>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <Badge variant="secondary">{ROLE_LABELS[member.role]}</Badge>
+                    {member.totalchatAttendantId && (
+                      <Badge variant="outline" className="gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        TotalChat
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <UserFormDialog open={dialogOpen} onOpenChange={setDialogOpen} user={selectedUser} />
     </div>
   );
 }

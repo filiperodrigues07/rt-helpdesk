@@ -14,6 +14,50 @@ export interface LoginResponse {
   user: AuthenticatedUser;
 }
 
+export interface Role {
+  id: string;
+  name: RoleName;
+  description: string | null;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  jobTitle: string | null;
+  avatarUrl: string | null;
+  active: boolean;
+  totalchatAttendantId: string | null;
+  roleId: string;
+  role: RoleName;
+  createdAt: string;
+}
+
+export interface CreateUserInput {
+  name: string;
+  email: string;
+  password: string;
+  jobTitle?: string;
+  roleId: string;
+  totalchatAttendantId?: string | null;
+}
+
+export interface UpdateUserInput {
+  name?: string;
+  email?: string;
+  password?: string;
+  jobTitle?: string;
+  roleId?: string;
+  active?: boolean;
+  totalchatAttendantId?: string | null;
+}
+
+export interface TotalChatAttendant {
+  id: string;
+  nome: string;
+  departamento: string;
+}
+
 export type TicketStatus =
   | 'NOVO'
   | 'EM_ANDAMENTO'

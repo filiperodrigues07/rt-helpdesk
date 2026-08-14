@@ -9,6 +9,7 @@ import { customerRoutes } from './customer.routes';
 import { categoryRoutes } from './category.routes';
 import { tagRoutes } from './tag.routes';
 import { appointmentRoutes } from './appointment.routes';
+import { roleRoutes } from './role.routes';
 
 export const apiRouter = Router();
 
@@ -22,3 +23,4 @@ apiRouter.use('/customers', customerRoutes);
 apiRouter.use('/categories', categoryRoutes);
 apiRouter.use('/tags', tagRoutes);
 apiRouter.use('/appointments', appointmentRoutes);
+apiRouter.use('/roles', roleRoutes);

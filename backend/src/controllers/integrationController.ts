@@ -30,4 +30,9 @@ export const integrationController = {
     const result = await totalChatService.syncTickets();
     return ok(res, result);
   },
+
+  async listTotalChatAttendants(_req: Request, res: Response) {
+    const attendants = await totalChatService.listAttendants();
+    return ok(res, attendants);
+  },
 };

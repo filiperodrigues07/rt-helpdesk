@@ -127,12 +127,12 @@ Após rodar o seed:
 
 | Usuário | E-mail | Senha | Papel |
 |---|---|---|---|
-| Ana Souza | ana.souza@rthelpdesk.com | 123456 | Administrador |
+| Ana Souza | ana.souza@rthelpdesk.com | 123456 | Suporte |
 | Carlos Lima | carlos.lima@rthelpdesk.com | 123456 | Gerente |
 | João Pereira | joao.pereira@rthelpdesk.com | 123456 | Suporte |
 | Maria Fernandes | maria.fernandes@rthelpdesk.com | 123456 | Implantação |
 | Pedro Alves | pedro.alves@rthelpdesk.com | 123456 | Suporte |
-| Filipe Rodrigues | filiperodrigueshomework@gmail.com | 140204 | Administrador |
+| Filipe Rodrigues | filiperodrigueshomework@gmail.com | 140204 | **Administrador** (único) |
 
 ---
 

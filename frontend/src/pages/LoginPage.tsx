@@ -14,7 +14,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = React.useState('filiperodrigueshomework@gmail.com');
+  const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -89,10 +89,6 @@ export function LoginPage() {
             </form>
           </CardContent>
         </Card>
-
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Credencial de teste: ana.souza@rthelpdesk.com / 123456
-        </p>
       </div>
     </div>
   );

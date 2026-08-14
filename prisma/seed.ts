@@ -109,7 +109,7 @@ async function main() {
   const passwordHash = await bcrypt.hash('123456', 10);
 
   const usersData = [
-    { name: 'Ana Souza', email: 'ana.souza@rthelpdesk.com', jobTitle: 'Administradora', role: 'ADMINISTRADOR' as RoleName },
+    { name: 'Ana Souza', email: 'ana.souza@rthelpdesk.com', jobTitle: 'Analista de Suporte', role: 'SUPORTE' as RoleName },
     { name: 'Carlos Lima', email: 'carlos.lima@rthelpdesk.com', jobTitle: 'Gerente de Suporte', role: 'GERENTE' as RoleName },
     { name: 'João Pereira', email: 'joao.pereira@rthelpdesk.com', jobTitle: 'Analista de Suporte', role: 'SUPORTE' as RoleName },
     { name: 'Maria Fernandes', email: 'maria.fernandes@rthelpdesk.com', jobTitle: 'Analista de Implantação', role: 'IMPLANTACAO' as RoleName },
@@ -132,9 +132,7 @@ async function main() {
     users.push(user);
   }
 
-  console.log('Usuário administrador de teste: ana.souza@rthelpdesk.com / senha: 123456');
-
-  // Usuário real do dono do projeto.
+  // Usuário real do dono do projeto — único Administrador.
   const ownerPasswordHash = await bcrypt.hash('140204', 10);
   const owner = await prisma.user.upsert({
     where: { email: 'filiperodrigueshomework@gmail.com' },

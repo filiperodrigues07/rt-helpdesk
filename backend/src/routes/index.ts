@@ -1,0 +1,22 @@
+import { Router } from 'express';
+import { authRoutes } from './auth.routes';
+import { userRoutes } from './user.routes';
+import { dashboardRoutes } from './dashboard.routes';
+import { integrationRoutes } from './integration.routes';
+import { knowledgeBaseRoutes } from './knowledgeBase.routes';
+import { ticketRoutes } from './ticket.routes';
+import { customerRoutes } from './customer.routes';
+import { categoryRoutes } from './category.routes';
+import { tagRoutes } from './tag.routes';
+
+export const apiRouter = Router();
+
+apiRouter.use('/auth', authRoutes);
+apiRouter.use('/users', userRoutes);
+apiRouter.use('/dashboard', dashboardRoutes);
+apiRouter.use('/integrations', integrationRoutes);
+apiRouter.use('/knowledge-base', knowledgeBaseRoutes);
+apiRouter.use('/tickets', ticketRoutes);
+apiRouter.use('/customers', customerRoutes);
+apiRouter.use('/categories', categoryRoutes);
+apiRouter.use('/tags', tagRoutes);

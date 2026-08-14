@@ -1,0 +1,398 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================================
+// ENUMS
+// ==========================================================
+
+enum RoleName {
+  ADMINISTRADOR
+  GERENTE
+  SUPORTE
+  IMPLANTACAO
+  VISUALIZACAO
+}
+
+enum TicketStatus {
+  NOVO
+  EM_ANDAMENTO
+  AGUARDANDO_CLIENTE
+  AGUARDANDO_TERCEIRO
+  RESOLVIDO
+  ENCERRADO
+}
+
+enum TicketPriority {
+  BAIXA
+  NORMAL
+  ALTA
+  CRITICA
+}
+
+enum TicketOrigin {
+  MANUAL
+  TOTALCHAT
+}
+
+enum AppointmentType {
+  SUPORTE
+  IMPLANTACAO
+  TREINAMENTO
+  REUNIAO
+  VISITA_TECNICA
+  RETORNO_CLIENTE
+  INTERNO
+}
+
+enum CommentVisibility {
+  INTERNO
+  CLIENTE
+}
+
+enum NotificationType {
+  CHAMADO_ATRIBUIDO
+  RESPONSAVEL_ALTERADO
+  MENCAO_COMENTARIO
+  SLA_PROXIMO_VENCIMENTO
+  SLA_VENCIDO
+  EVENTO_AGENDA_PROXIMO
+  CHAMADO_ATUALIZADO
+}
+
+enum IntegrationProvider {
+  TOTALCHAT
+  KNOWLEDGE_BASE
+}
+
+enum IntegrationStatus {
+  AGUARDANDO_CONFIGURACAO
+  CONECTADO
+  ERRO
+}
+
+// ==========================================================
+// USERS / ROLES / PERMISSIONS
+// ==========================================================
+
+model Role {
+  id          String       @id @default(uuid())
+  name        RoleName     @unique
+  description String?
+  permissions Permission[]
+  users       User[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String @id @default(uuid())
+  key         String @unique
+  description String?
+  roles       Role[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("permissions")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  jobTitle     String?
+  avatarUrl    String?
+  active       Boolean  @default(true)
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  assignedTickets        Ticket[]           @relation("TicketAssignee")
+  createdTickets         Ticket[]           @relation("TicketCreator")
+  ticketComments         TicketComment[]
+  ticketHistoryEntries   TicketHistory[]
+  appointments           Appointment[]
+  notifications          Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ==========================================================
+// CUSTOMERS
+// ==========================================================
+
+model Customer {
+  id             String  @id @default(uuid())
+  companyName    String
+  tradeName      String?
+  cnpj           String? @unique
+  phone          String?
+  email          String?
+  city           String?
+  notes          String?
+
+  contacts     CustomerContact[]
+  tickets      Ticket[]
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("customers")
+}
+
+// Estrutura preparada para futuramente relacionar o contato à conversa do TotalChat.
+model CustomerContact {
+  id         String  @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  name  String
+  email String?
+  phone String?
+
+  totalchatContactId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("customer_contacts")
+}
+
+// ==========================================================
+// CATEGORIES / TAGS
+// ==========================================================
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  tickets     Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("categories")
+}
+
+model Tag {
+  id      String     @id @default(uuid())
+  name    String     @unique
+  tickets TicketTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tags")
+}
+
+model TicketTag {
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  tagId    String
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, tagId])
+  @@map("ticket_tags")
+}
+
+// ==========================================================
+// SLA
+// ==========================================================
+
+model SlaRule {
+  id              String         @id @default(uuid())
+  priority        TicketPriority @unique
+  responseTimeMin Int
+  tickets         Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sla_rules")
+}
+
+// ==========================================================
+// TICKETS
+// ==========================================================
+
+model Ticket {
+  id          String         @id @default(uuid())
+  number      Int            @unique @default(autoincrement())
+  title       String
+  description String
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  assigneeId String?
+  assignee   User?   @relation("TicketAssignee", fields: [assigneeId], references: [id])
+
+  creatorId String?
+  creator   User?   @relation("TicketCreator", fields: [creatorId], references: [id])
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  priority TicketPriority @default(NORMAL)
+  status   TicketStatus   @default(NOVO)
+  origin   TicketOrigin   @default(MANUAL)
+
+  slaRuleId String?
+  slaRule   SlaRule? @relation(fields: [slaRuleId], references: [id])
+  slaDueAt  DateTime?
+
+  // Campos estruturais para futura integração com o TotalChat.
+  // Não preenchidos até que a integração real seja implementada.
+  totalchatConversationId String?
+  totalchatMessageId      String?
+  totalchatContactId      String?
+  totalchatConversationUrl String?
+
+  resolvedProblem String?
+  rootCause       String?
+  appliedSolution String?
+  observations    String?
+
+  resolvedAt DateTime?
+  closedAt   DateTime?
+
+  tags        TicketTag[]
+  comments    TicketComment[]
+  history     TicketHistory[]
+  attachments TicketAttachment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tickets")
+}
+
+model TicketComment {
+  id       String @id @default(uuid())
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId String?
+  author   User?  @relation(fields: [authorId], references: [id])
+
+  content    String
+  visibility CommentVisibility @default(INTERNO)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ticket_comments")
+}
+
+model TicketHistory {
+  id       String @id @default(uuid())
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId String?
+  author   User?  @relation(fields: [authorId], references: [id])
+
+  action      String
+  fieldName   String?
+  oldValue    String?
+  newValue    String?
+
+  createdAt DateTime @default(now())
+
+  @@map("ticket_history")
+}
+
+model TicketAttachment {
+  id       String @id @default(uuid())
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  fileName String
+  fileUrl  String
+  mimeType String?
+  sizeBytes Int?
+
+  createdAt DateTime @default(now())
+
+  @@map("ticket_attachments")
+}
+
+// ==========================================================
+// AGENDA
+// ==========================================================
+
+model Appointment {
+  id String @id @default(uuid())
+
+  title       String
+  type        AppointmentType
+  description String?
+  notes       String?
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  assigneeId String?
+  assignee   User?   @relation(fields: [assigneeId], references: [id])
+
+  startsAt DateTime
+  endsAt   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("appointments")
+}
+
+// ==========================================================
+// NOTIFICATIONS
+// ==========================================================
+
+model Notification {
+  id     String            @id @default(uuid())
+  userId String
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    NotificationType
+  title   String
+  message String?
+  readAt  DateTime?
+
+  relatedTicketId String?
+  relatedUrl      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
+}
+
+// ==========================================================
+// INTEGRATIONS (metadata apenas — sem credenciais reais ainda)
+// ==========================================================
+
+model Integration {
+  id       String              @id @default(uuid())
+  provider IntegrationProvider @unique
+  status   IntegrationStatus   @default(AGUARDANDO_CONFIGURACAO)
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("integrations")
+}

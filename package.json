@@ -1,0 +1,19 @@
+{
+  "name": "rt-helpdesk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RT HELPDESK - Sistema interno de gestão de suporte e implantação de ERP",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build:backend": "npm run build --workspace backend",
+    "build:frontend": "npm run build --workspace frontend",
+    "prisma:generate": "npm run prisma:generate --workspace backend",
+    "prisma:migrate": "npm run prisma:migrate --workspace backend",
+    "seed": "npm run seed --workspace backend"
+  }
+}

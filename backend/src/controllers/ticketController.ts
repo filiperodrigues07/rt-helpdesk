@@ -99,6 +99,11 @@ export const ticketController = {
     return ok(res, ticket);
   },
 
+  async getConversation(req: Request, res: Response) {
+    const conversation = await ticketService.getConversation(req.params.id);
+    return ok(res, conversation);
+  },
+
   async create(req: Request, res: Response) {
     const user = requireUser(req);
     const input = createTicketSchema.parse(req.body);

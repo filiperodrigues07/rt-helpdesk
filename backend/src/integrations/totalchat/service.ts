@@ -129,6 +129,35 @@ function messagesToDescription(messages: TotalChatMensagem[]): string {
     .slice(0, 4000);
 }
 
+const MAX_CONVERSATION_PAGES = 20; // até ~1400 mensagens — suficiente pra qualquer atendimento
+
+const MEDIA_TYPE_LABELS: Record<number, string> = {
+  1: 'imagem',
+  2: 'documento',
+  3: 'áudio',
+};
+
+function parseTotalChatDate(h: string): string | null {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/.exec(h);
+  if (!match) return null;
+  const [, day, month, year, hour, minute] = match;
+  return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)).toISOString();
+}
+
+async function fetchConversationMessages(clienteId: number): Promise<TotalChatMensagem[]> {
+  const byId = new Map<number, TotalChatMensagem>();
+
+  for (let pag = 0; pag < MAX_CONVERSATION_PAGES; pag++) {
+    if (pag > 0) await delay(REQUEST_THROTTLE_MS);
+    const page = await totalChatClient.getMensagens(clienteId, pag);
+    if (page.length === 0) break;
+    for (const message of page) byId.set(message.d, message);
+    if (page.length < 70) break;
+  }
+
+  return [...byId.values()].sort((a, b) => a.d - b.d);
+}
+
 async function processContactMessages(clienteId: number, messages: TotalChatMensagem[]) {
   const sorted = [...messages].sort((a, b) => a.d - b.d);
   const lastProcessedId = await getLastProcessedMessageId(clienteId);
@@ -204,6 +233,31 @@ async function processContactMessages(clienteId: number, messages: TotalChatMens
 }
 
 export const totalChatService = {
+  async getConversation(clienteId: number) {
+    const messages = await fetchConversationMessages(clienteId);
+
+    const attendantIds = [...new Set(messages.map((m) => m.aid).filter((aid): aid is number => !!aid))];
+    const attendants = attendantIds.length
+      ? await prisma.user.findMany({
+          where: { totalchatAttendantId: { in: attendantIds.map(String) } },
+          select: { totalchatAttendantId: true, name: true },
+        })
+      : [];
+    const attendantNameById = new Map(attendants.map((a) => [a.totalchatAttendantId, a.name]));
+
+    return messages.map((message) => ({
+      id: message.d,
+      direction: message.s === 0 ? ('cliente' as const) : ('equipe' as const),
+      senderName:
+        message.s === 0
+          ? message.f || 'Cliente'
+          : (message.aid && attendantNameById.get(String(message.aid))) || message.f || 'Equipe',
+      text: message.m || '',
+      mediaType: message.tipo ? (MEDIA_TYPE_LABELS[message.tipo] ?? null) : null,
+      timestamp: parseTotalChatDate(message.h),
+    }));
+  },
+
   async getIntegrationStatus() {
     return {
       provider: 'TOTALCHAT' as const,

@@ -12,6 +12,15 @@ import type {
   UpdateTicketInput,
 } from '@/types';
 
+export interface TicketConversationMessage {
+  id: number;
+  direction: 'cliente' | 'equipe';
+  senderName: string;
+  text: string;
+  mediaType: string | null;
+  timestamp: string | null;
+}
+
 export const ticketService = {
   async list(filters: TicketListFilters) {
     const { data } = await api.get<ApiSuccess<PaginatedResult<TicketListItem>>>('/tickets', {
@@ -27,6 +36,11 @@ export const ticketService = {
 
   async getById(id: string) {
     const { data } = await api.get<ApiSuccess<TicketDetail>>(`/tickets/${id}`);
+    return data.data;
+  },
+
+  async getConversation(id: string) {
+    const { data } = await api.get<ApiSuccess<TicketConversationMessage[]>>(`/tickets/${id}/conversation`);
     return data.data;
   },
 

@@ -8,3 +8,12 @@ export function useTicket(id: string | undefined) {
     enabled: !!id,
   });
 }
+
+export function useTicketConversation(id: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ['tickets', 'conversation', id],
+    queryFn: () => ticketService.getConversation(id as string),
+    enabled: !!id && enabled,
+    staleTime: 60 * 1000,
+  });
+}

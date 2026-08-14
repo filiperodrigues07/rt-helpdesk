@@ -2,6 +2,7 @@ import { TicketOrigin, TicketPriority, TicketStatus } from '@prisma/client';
 import { ticketRepository, TicketListFilters, TicketListOptions } from '../repositories/ticketRepository';
 import { userRepository } from '../repositories/userRepository';
 import { notificationService } from './notificationService';
+import { totalChatService } from '../integrations/totalchat/service';
 import { AppError } from '../utils/AppError';
 
 const RESOLVED_STATUSES: TicketStatus[] = ['RESOLVIDO', 'ENCERRADO'];
@@ -94,6 +95,23 @@ export const ticketService = {
       throw new AppError('Chamado não encontrado', 404);
     }
     return ticket;
+  },
+
+  async getConversation(id: string) {
+    const ticket = await this.getById(id);
+    if (ticket.origin !== 'TOTALCHAT' || !ticket.totalchatContactId) {
+      throw new AppError('Este chamado não tem uma conversa do TotalChat vinculada', 400);
+    }
+
+    const messages = await totalChatService.getConversation(Number(ticket.totalchatContactId));
+
+    // GetMensagens devolve o histórico inteiro do contato no TotalChat (pode ter
+    // anos e milhares de mensagens de outros atendimentos) — não é escopado por
+    // atendimento/ticket. Filtramos pra janela deste chamado: da criação (com
+    // uma folga de 24h pra garantir que a mensagem que disparou o chamado entre)
+    // até agora.
+    const cutoff = new Date(ticket.createdAt.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    return messages.filter((message) => !message.timestamp || message.timestamp >= cutoff);
   },
 
   async create(input: CreateTicketInput) {

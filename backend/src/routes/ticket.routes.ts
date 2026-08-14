@@ -13,6 +13,7 @@ ticketRoutes.get('/', asyncHandler(ticketController.list));
 ticketRoutes.get('/board', asyncHandler(ticketController.board));
 ticketRoutes.post('/', asyncHandler(ticketController.create));
 ticketRoutes.get('/:id', asyncHandler(ticketController.getById));
+ticketRoutes.get('/:id/conversation', asyncHandler(ticketController.getConversation));
 ticketRoutes.patch('/:id', asyncHandler(ticketController.update));
 ticketRoutes.patch('/:id/status', asyncHandler(ticketController.updateStatus));
 ticketRoutes.post('/:id/resolve', asyncHandler(ticketController.resolve));

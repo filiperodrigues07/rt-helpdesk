@@ -190,6 +190,7 @@ GET    /api/tickets                   (filtros, ordenação, paginação)
 GET    /api/tickets/board             (todos os chamados, para o Kanban)
 POST   /api/tickets
 GET    /api/tickets/:id
+GET    /api/tickets/:id/conversation (mensagens do cliente e da equipe via TotalChat — só chamados com origem TotalChat)
 PATCH  /api/tickets/:id
 PATCH  /api/tickets/:id/status
 POST   /api/tickets/:id/resolve       (problema/causa raiz/solução — status Resolvido/Encerrado)
@@ -295,6 +296,7 @@ Pontos importantes:
 - **Com `marcaLida=false` as páginas não são estritamente disjuntas** — a mesma mensagem pode aparecer em mais de uma página da paginação. A sincronização deduplica por id de mensagem (`d`) antes de processar, então isso não gera texto repetido no chamado.
 - **`GetContatoPorId` retorna `{}` para diversos contatos reais e válidos** — outro bug confirmado no servidor do TotalChat em 2026-08-14 (endpoint correto, formato documentado, mas resposta vazia mesmo para contatos com mensagens do mesmo dia). Como esse endpoint é a única forma documentada de obter nome/telefone do contato, quando ele falha a sincronização usa como nome alternativo o campo `f` (nome de quem enviou) da mensagem mais recente — então o cliente ainda é criado com um nome legível, só que **sem telefone**, e por isso não participa da correlação automática por telefone com clientes já cadastrados (precisa ser revisado manualmente depois).
 - **Rate limit de ~2 requisições/segundo** na API do TotalChat (header `X-Rate-Limit-Limit: 1s`, observado em 2026-08-14) — a sincronização espera ~400ms entre chamadas (paginação e busca de contato por cliente) para não estourar o limite e receber HTTP 429.
+- **Conversa completa no chamado** (`GET /api/tickets/:id/conversation`, botão "Carregar conversa completa" no detalhe do chamado) — mostra as mensagens do cliente e as respostas da equipe lado a lado, com nome de quem enviou (o atendente é identificado pelo `totalchatAttendantId` vinculado ao usuário) e horário. Usa `GetMensagens` (histórico completo do contato no TotalChat, não escopado por atendimento) filtrado pela janela de tempo do próprio chamado (criação do chamado − 24h até agora), já que um contato pode ter milhares de mensagens de atendimentos antigos. Imagens/áudios/documentos aparecem só como indicação de mídia (ex.: "imagem enviado(a)"), sem visualização — a API do TotalChat não documenta um endpoint pra baixar mídia recebida, e testar caminhos prováveis contra a API real (`/arquivos/`, `/uploads/`, `/v1/Contato/GetArquivo/` etc.) deu 404 em todos.
 - Limitações conhecidas (documentadas em comentários no código): não há endpoint para listar "todos os atendimentos abertos" de uma vez (só por atendente), não há um id de atendimento confiável disponível a partir das mensagens não lidas, e prioridade/categoria/responsável não são inferidos automaticamente (todo chamado automático nasce com prioridade Normal, sem categoria e sem responsável).
 
 ### Base de Conhecimento

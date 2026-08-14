@@ -15,6 +15,7 @@ import { PriorityBadge } from '@/components/tickets/PriorityBadge';
 import { SlaIndicator } from '@/components/tickets/SlaIndicator';
 import { TicketTimeline } from '@/components/tickets/TicketTimeline';
 import { TicketComments } from '@/components/tickets/TicketComments';
+import { TicketConversation } from '@/components/tickets/TicketConversation';
 import { TicketAttachments } from '@/components/tickets/TicketAttachments';
 import { TicketKnowledgeBase } from '@/components/tickets/TicketKnowledgeBase';
 import { ResolveTicketDialog } from '@/components/tickets/ResolveTicketDialog';
@@ -130,6 +131,17 @@ export function TicketDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {ticket.origin === 'TOTALCHAT' && ticket.totalchatContactId && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-foreground">Conversa no TotalChat</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TicketConversation ticketId={ticket.id} />
+              </CardContent>
+            </Card>
+          )}
 
           {isResolved && (ticket.resolvedProblem || ticket.rootCause || ticket.appliedSolution) && (
             <Card>

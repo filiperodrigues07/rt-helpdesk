@@ -328,6 +328,7 @@ export interface TicketDetail {
   priority: TicketPriority;
   status: TicketStatus;
   origin: TicketOrigin;
+  totalchatContactId: string | null;
   slaDueAt: string | null;
   resolvedProblem: string | null;
   rootCause: string | null;

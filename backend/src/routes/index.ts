@@ -10,6 +10,7 @@ import { categoryRoutes } from './category.routes';
 import { tagRoutes } from './tag.routes';
 import { appointmentRoutes } from './appointment.routes';
 import { roleRoutes } from './role.routes';
+import { reportRoutes } from './report.routes';
 
 export const apiRouter = Router();
 
@@ -24,3 +25,4 @@ apiRouter.use('/categories', categoryRoutes);
 apiRouter.use('/tags', tagRoutes);
 apiRouter.use('/appointments', appointmentRoutes);
 apiRouter.use('/roles', roleRoutes);
+apiRouter.use('/reports', reportRoutes);

@@ -62,6 +62,43 @@ export interface TotalChatAttendant {
   departamento: string;
 }
 
+export interface ReportFilters {
+  start?: string;
+  end?: string;
+  customerId?: string;
+  assigneeId?: string;
+  categoryId?: string;
+  priority?: TicketPriority;
+  status?: TicketStatus;
+}
+
+export interface ReportSummary {
+  totals: {
+    total: number;
+    open: number;
+    resolved: number;
+    avgResolutionHours: number;
+    slaCompliancePercent: number | null;
+  };
+  byStatus: { status: TicketStatus; count: number }[];
+  byCustomer: { customerId: string; name: string; count: number }[];
+  byCategory: { categoryId: string | null; name: string; count: number }[];
+  byAssignee: { assigneeId: string | null; name: string; count: number }[];
+}
+
+export interface ReportTicketRow {
+  number: number;
+  title: string;
+  cliente: string;
+  responsavel: string;
+  categoria: string;
+  prioridade: string;
+  status: string;
+  origem: string;
+  abertoEm: string;
+  resolvidoEm: string;
+}
+
 export type TicketStatus =
   | 'NOVO'
   | 'EM_ANDAMENTO'

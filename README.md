@@ -2,7 +2,7 @@
 
 Sistema web interno para gestão da equipe de suporte e implantação de sistemas ERP. Centraliza chamados, agenda, clientes, equipe e indicadores de produtividade.
 
-> **Etapa atual: Etapa 7.** Fundação (Etapa 1), módulo completo de **Chamados** (Etapa 2), **integração real com o TotalChat** (client + sincronização automática), módulos completos de **Clientes**, **Agenda** e **Equipe** (gerenciamento de usuários + métricas de produtividade por colaborador) estão implementados. Apenas **Relatórios** ainda é placeholder.
+> **Etapa atual: Etapa 8.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes**, **Agenda**, **Equipe** (usuários + produtividade) e **Relatórios** (filtros, gráficos e exportação CSV). O que resta é evolução: notificações em tempo real, atribuição automática via TotalChat, exportação em Excel/PDF, e a API real da Base de Conhecimento quando disponível.
 
 ---
 
@@ -169,6 +169,9 @@ GET    /api/appointments/:id
 PATCH  /api/appointments/:id
 DELETE /api/appointments/:id
 
+GET    /api/reports/summary           (totais, SLA, por cliente/categoria/atendente — mesmos filtros dos chamados)
+GET    /api/reports/tickets           (lista para exportação CSV)
+
 GET    /api/tickets                   (filtros, ordenação, paginação)
 GET    /api/tickets/board             (todos os chamados, para o Kanban)
 POST   /api/tickets
@@ -201,7 +204,7 @@ GET    /api/knowledge-base            (?q= para pesquisa — dados mockados)
 /clientes/:id/editar     Edição de cliente
 /base-de-conhecimento    Consulta a artigos (dados mockados)
 /equipe                  Gerenciamento de usuários (criar/editar/ativar/desativar) + métricas de produtividade
-/relatorios              (placeholder — próxima etapa)
+/relatorios              Filtros (período/cliente/responsável/categoria/prioridade/status), gráficos e exportação CSV
 /configuracoes           Status das integrações + testar/sincronizar TotalChat
 ```
 
@@ -248,7 +251,7 @@ A tela **Configurações → Integrações** nunca exibe uma integração como "
 
 ## Próxima etapa recomendada
 
-1. Módulo de **Relatórios** com filtros e exportação.
-2. Sistema de **Notificações** em tempo real.
-3. Usar o vínculo usuário↔atendente do TotalChat para atribuição automática de responsável em chamados criados via TotalChat.
+1. Sistema de **Notificações** em tempo real.
+2. Usar o vínculo usuário↔atendente do TotalChat para atribuição automática de responsável em chamados criados via TotalChat.
+3. Exportação de relatórios em Excel e PDF (hoje só CSV).
 4. Conectar a API real da Base de Conhecimento, substituindo os dados mockados.

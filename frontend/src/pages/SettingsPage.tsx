@@ -1,10 +1,13 @@
 import * as React from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { MessageSquare, BookOpen, CircleDot, ImageUp, Loader2, RefreshCw, Trash2, Wifi } from 'lucide-react';
+import { MessageSquare, BookOpen, CircleDot, ImageUp, KeyRound, Loader2, RefreshCw, Trash2, Wifi } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -12,11 +15,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useIntegrations } from '@/hooks/useIntegrations';
+import { useIntegrations, useTotalChatConfig, useUpdateTotalChatConfig } from '@/hooks/useIntegrations';
 import { integrationService } from '@/services/integrationService';
 import { useLogo, useRemoveLogo, useUploadLogo } from '@/hooks/useLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { BrandLogo } from '@/components/BrandLogo';
+import { PermissionsMatrix } from '@/components/settings/PermissionsMatrix';
 import { toast } from '@/hooks/use-toast';
 import type { IntegrationInfo } from '@/types';
 
@@ -55,6 +59,47 @@ export function SettingsPage() {
   const uploadLogo = useUploadLogo();
   const removeLogo = useRemoveLogo();
   const logoInputRef = React.useRef<HTMLInputElement>(null);
+
+  const { data: totalChatConfig, isLoading: totalChatConfigLoading } = useTotalChatConfig(canManage);
+  const updateTotalChatConfig = useUpdateTotalChatConfig();
+
+  const [tcApiUrl, setTcApiUrl] = React.useState('');
+  const [tcUsername, setTcUsername] = React.useState('');
+  const [tcPassword, setTcPassword] = React.useState('');
+  const [tcConnectionId, setTcConnectionId] = React.useState('');
+  const [tcPollingEnabled, setTcPollingEnabled] = React.useState(false);
+  const [tcPollIntervalSeconds, setTcPollIntervalSeconds] = React.useState('60');
+
+  React.useEffect(() => {
+    if (!totalChatConfig) return;
+    setTcApiUrl(totalChatConfig.apiUrl);
+    setTcUsername(totalChatConfig.username);
+    setTcPassword('');
+    setTcConnectionId(totalChatConfig.connectionId ? String(totalChatConfig.connectionId) : '');
+    setTcPollingEnabled(totalChatConfig.pollingEnabled);
+    setTcPollIntervalSeconds(String(totalChatConfig.pollIntervalSeconds));
+  }, [totalChatConfig]);
+
+  async function handleSaveTotalChatConfig(event: React.FormEvent) {
+    event.preventDefault();
+    try {
+      await updateTotalChatConfig.mutateAsync({
+        apiUrl: tcApiUrl || undefined,
+        username: tcUsername || undefined,
+        password: tcPassword || undefined,
+        connectionId: tcConnectionId ? Number(tcConnectionId) : null,
+        pollingEnabled: tcPollingEnabled,
+        pollIntervalSeconds: Number(tcPollIntervalSeconds),
+      });
+      setTcPassword('');
+      toast({ title: 'Credenciais do TotalChat salvas' });
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ??
+        'Verifique os dados e tente novamente.';
+      toast({ variant: 'destructive', title: 'Erro ao salvar credenciais', description: message });
+    }
+  }
 
   async function handleLogoSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -174,6 +219,104 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      {canManage && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5 text-foreground">
+              <KeyRound className="h-4 w-4" />
+              Credenciais do TotalChat
+            </CardTitle>
+            <CardDescription>
+              Usuário e senha da plataforma TotalChat. Recomendado usar um usuário de serviço dedicado.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {totalChatConfigLoading ? (
+              <Skeleton className="h-48 w-full" />
+            ) : (
+              <form className="space-y-4" onSubmit={handleSaveTotalChatConfig}>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tc-api-url">URL da API</Label>
+                  <Input
+                    id="tc-api-url"
+                    placeholder="https://api.totalchat.com.br/"
+                    value={tcApiUrl}
+                    onChange={(event) => setTcApiUrl(event.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tc-username">Usuário</Label>
+                    <Input
+                      id="tc-username"
+                      value={tcUsername}
+                      onChange={(event) => setTcUsername(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tc-password">Senha</Label>
+                    <Input
+                      id="tc-password"
+                      type="password"
+                      value={tcPassword}
+                      onChange={(event) => setTcPassword(event.target.value)}
+                      placeholder={totalChatConfig?.hasPassword ? 'Deixe em branco para manter a atual' : undefined}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tc-connection-id">Connection ID</Label>
+                    <Input
+                      id="tc-connection-id"
+                      type="number"
+                      placeholder="Conexão principal"
+                      value={tcConnectionId}
+                      onChange={(event) => setTcConnectionId(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tc-polling">Sincronização automática</Label>
+                    <Select
+                      value={tcPollingEnabled ? 'true' : 'false'}
+                      onValueChange={(value) => setTcPollingEnabled(value === 'true')}
+                    >
+                      <SelectTrigger id="tc-polling">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="false">Desligada</SelectItem>
+                        <SelectItem value="true">Ligada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tc-interval">Intervalo (segundos)</Label>
+                    <Input
+                      id="tc-interval"
+                      type="number"
+                      min={10}
+                      max={3600}
+                      value={tcPollIntervalSeconds}
+                      onChange={(event) => setTcPollIntervalSeconds(event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button type="submit" size="sm" disabled={updateTotalChatConfig.isPending}>
+                    {updateTotalChatConfig.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Salvar credenciais
+                  </Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-foreground">Integrações</CardTitle>
@@ -245,13 +388,25 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      {currentUser?.role === 'ADMINISTRADOR' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-foreground">Permissões por papel</CardTitle>
+            <CardDescription>Controle quais telas cada papel pode acessar.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PermissionsMatrix />
+          </CardContent>
+        </Card>
+      )}
+
       <Dialog open={syncConfirmOpen} onOpenChange={setSyncConfirmOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Sincronizar chamados do TotalChat agora?</DialogTitle>
             <DialogDescription>
-              Isso vai buscar as mensagens não lidas da conta real do TotalChat, <strong>marcá-las como lidas</strong>{' '}
-              e criar ou atualizar chamados a partir delas. Essa ação não pode ser desfeita.
+              Isso vai buscar as mensagens não lidas da conta real do TotalChat e criar ou atualizar chamados a
+              partir delas. As mensagens não são marcadas como lidas no TotalChat.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">

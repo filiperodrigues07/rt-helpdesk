@@ -38,6 +38,7 @@ export const authService = {
         jobTitle: user.jobTitle,
         avatarUrl: user.avatarUrl,
         role: user.role.name,
+        permissions: user.role.permissions.map((p) => p.key),
       },
     };
   },
@@ -56,6 +57,7 @@ export const authService = {
       jobTitle: user.jobTitle,
       avatarUrl: user.avatarUrl,
       role: user.role.name,
+      permissions: user.role.permissions.map((p) => p.key),
     };
   },
 };

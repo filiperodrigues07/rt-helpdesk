@@ -2,13 +2,19 @@ import { Router } from 'express';
 import { knowledgeBaseController } from '../controllers/knowledgeBaseController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { authenticate, authorize } from '../middlewares/auth';
+import { requireScreenPermission } from '../middlewares/permission';
 
 export const knowledgeBaseRoutes = Router();
 
 knowledgeBaseRoutes.use(authenticate);
+// Leitura fica aberta pra qualquer autenticado: o widget de artigos
+// relacionados dentro do Chamado usa esses mesmos endpoints, independente
+// da tela Base de Conhecimento estar liberada pro papel do usuário.
 knowledgeBaseRoutes.get('/', asyncHandler(knowledgeBaseController.list));
 knowledgeBaseRoutes.get('/categories', asyncHandler(knowledgeBaseController.listCategories));
-knowledgeBaseRoutes.post('/', authorize('ADMINISTRADOR', 'GERENTE'), asyncHandler(knowledgeBaseController.create));
 knowledgeBaseRoutes.get('/:id', asyncHandler(knowledgeBaseController.getById));
-knowledgeBaseRoutes.patch('/:id', authorize('ADMINISTRADOR', 'GERENTE'), asyncHandler(knowledgeBaseController.update));
-knowledgeBaseRoutes.delete('/:id', authorize('ADMINISTRADOR', 'GERENTE'), asyncHandler(knowledgeBaseController.remove));
+
+const canManageArticles = [authorize('ADMINISTRADOR', 'GERENTE'), requireScreenPermission('screen.base-conhecimento')];
+knowledgeBaseRoutes.post('/', ...canManageArticles, asyncHandler(knowledgeBaseController.create));
+knowledgeBaseRoutes.patch('/:id', ...canManageArticles, asyncHandler(knowledgeBaseController.update));
+knowledgeBaseRoutes.delete('/:id', ...canManageArticles, asyncHandler(knowledgeBaseController.remove));

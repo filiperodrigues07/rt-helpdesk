@@ -13,6 +13,7 @@ import { roleRoutes } from './role.routes';
 import { reportRoutes } from './report.routes';
 import { notificationRoutes } from './notification.routes';
 import { settingsRoutes } from './settings.routes';
+import { permissionRoutes } from './permission.routes';
 
 export const apiRouter = Router();
 
@@ -30,3 +31,4 @@ apiRouter.use('/roles', roleRoutes);
 apiRouter.use('/reports', reportRoutes);
 apiRouter.use('/notifications', notificationRoutes);
 apiRouter.use('/settings', settingsRoutes);
+apiRouter.use('/permissions', permissionRoutes);

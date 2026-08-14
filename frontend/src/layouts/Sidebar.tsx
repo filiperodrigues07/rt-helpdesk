@@ -22,16 +22,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserMenu } from '@/components/UserMenu';
 import { UserAvatar } from '@/components/UserAvatar';
 import { BrandLogo } from '@/components/BrandLogo';
+import { hasScreenPermission, SCREEN_PERMISSIONS } from '@/utils/screenPermissions';
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/chamados', label: 'Chamados', icon: Ticket },
-  { to: '/agenda', label: 'Agenda', icon: CalendarDays },
-  { to: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/base-de-conhecimento', label: 'Base de Conhecimento', icon: BookOpen },
-  { to: '/equipe', label: 'Equipe', icon: UsersRound },
-  { to: '/relatorios', label: 'Relatórios', icon: BarChart3 },
-  { to: '/configuracoes', label: 'Configurações', icon: Settings },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true, permission: null },
+  { to: '/chamados', label: 'Chamados', icon: Ticket, permission: SCREEN_PERMISSIONS.chamados },
+  { to: '/agenda', label: 'Agenda', icon: CalendarDays, permission: SCREEN_PERMISSIONS.agenda },
+  { to: '/clientes', label: 'Clientes', icon: Users, permission: SCREEN_PERMISSIONS.clientes },
+  {
+    to: '/base-de-conhecimento',
+    label: 'Base de Conhecimento',
+    icon: BookOpen,
+    permission: SCREEN_PERMISSIONS.baseConhecimento,
+  },
+  { to: '/equipe', label: 'Equipe', icon: UsersRound, permission: SCREEN_PERMISSIONS.equipe },
+  { to: '/relatorios', label: 'Relatórios', icon: BarChart3, permission: SCREEN_PERMISSIONS.relatorios },
+  { to: '/configuracoes', label: 'Configurações', icon: Settings, permission: SCREEN_PERMISSIONS.configuracoes },
 ];
 
 interface SidebarProps {
@@ -59,7 +65,7 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => !item.permission || hasScreenPermission(user, item.permission)).map((item) => {
           const Icon = item.icon;
           const link = (
             <NavLink

@@ -35,25 +35,50 @@ async function main() {
     roles[name] = role;
   }
 
-  // ---- Permissions (estrutura inicial, granularidade futura) ----
-  const permissionKeys = [
-    'tickets.view',
-    'tickets.manage',
-    'customers.manage',
-    'team.manage',
-    'reports.view',
-    'settings.manage',
-  ];
+  // ---- Permissions (acesso por tela — configurável depois em Configurações → Permissões) ----
+  const screenPermissions: Record<string, string> = {
+    'screen.chamados': 'Tela Chamados',
+    'screen.agenda': 'Tela Agenda',
+    'screen.clientes': 'Tela Clientes',
+    'screen.base-conhecimento': 'Tela Base de Conhecimento',
+    'screen.equipe': 'Tela Equipe',
+    'screen.relatorios': 'Tela Relatórios',
+    'screen.configuracoes': 'Tela Configurações',
+  };
 
-  for (const key of permissionKeys) {
-    await prisma.permission.upsert({ where: { key }, update: {}, create: { key } });
+  for (const [key, description] of Object.entries(screenPermissions)) {
+    await prisma.permission.upsert({ where: { key }, update: { description }, create: { key, description } });
   }
 
   const allPermissions = await prisma.permission.findMany();
+  const permissionByKey = new Map(allPermissions.map((p) => [p.key, p]));
+
+  // Matriz padrão — só usada na primeira vez (ou se a tela de Permissões nunca
+  // tiver sido usada pra alterar); dá pra reconfigurar livremente depois.
+  const defaultRoleScreens: Record<RoleName, string[]> = {
+    ADMINISTRADOR: Object.keys(screenPermissions),
+    GERENTE: Object.keys(screenPermissions),
+    SUPORTE: ['screen.chamados', 'screen.agenda', 'screen.clientes', 'screen.base-conhecimento'],
+    IMPLANTACAO: ['screen.chamados', 'screen.agenda', 'screen.clientes', 'screen.base-conhecimento'],
+    VISUALIZACAO: ['screen.relatorios'],
+  };
+
+  // ADMINISTRADOR sempre tem acesso total — não é reconfigurável (trava de segurança
+  // pra nunca ficar sem ninguém conseguindo acessar a tela de Permissões).
   await prisma.role.update({
     where: { name: 'ADMINISTRADOR' },
-    data: { permissions: { set: allPermissions.map((p) => ({ id: p.id })) } },
+    data: { permissions: { set: defaultRoleScreens.ADMINISTRADOR.map((key) => ({ id: permissionByKey.get(key)!.id })) } },
   });
+
+  for (const [roleName, keys] of Object.entries(defaultRoleScreens) as [RoleName, string[]][]) {
+    if (roleName === 'ADMINISTRADOR') continue;
+    const role = await prisma.role.findUnique({ where: { name: roleName }, include: { permissions: true } });
+    if (!role || role.permissions.length > 0) continue; // já configurado — não sobrescreve
+    await prisma.role.update({
+      where: { name: roleName },
+      data: { permissions: { set: keys.map((key) => ({ id: permissionByKey.get(key)!.id })) } },
+    });
+  }
 
   // ---- SLA Rules ----
   for (const [priority, hours] of Object.entries(SLA_HOURS) as [TicketPriority, number][]) {

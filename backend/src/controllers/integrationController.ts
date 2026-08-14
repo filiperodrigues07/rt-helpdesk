@@ -1,8 +1,18 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import { totalChatService } from '../integrations/totalchat/service';
 import { knowledgeBaseService } from '../integrations/knowledge-base/service';
 import { ok, fail } from '../utils/apiResponse';
 import { AppError } from '../utils/AppError';
+
+const totalChatConfigSchema = z.object({
+  apiUrl: z.string().trim().url('URL inválida').optional().or(z.literal('')),
+  username: z.string().trim().optional(),
+  password: z.string().trim().optional(),
+  connectionId: z.number().int().positive().nullable().optional(),
+  pollingEnabled: z.boolean().optional(),
+  pollIntervalSeconds: z.number().int().min(10).max(3600).optional(),
+});
 
 export const integrationController = {
   async list(_req: Request, res: Response) {
@@ -34,5 +44,19 @@ export const integrationController = {
   async listTotalChatAttendants(_req: Request, res: Response) {
     const attendants = await totalChatService.listAttendants();
     return ok(res, attendants);
+  },
+
+  async getTotalChatConfig(_req: Request, res: Response) {
+    const config = await totalChatService.getConfig();
+    return ok(res, config);
+  },
+
+  async updateTotalChatConfig(req: Request, res: Response) {
+    const input = totalChatConfigSchema.parse(req.body);
+    const config = await totalChatService.updateConfig({
+      ...input,
+      apiUrl: input.apiUrl || undefined,
+    });
+    return ok(res, config);
   },
 };

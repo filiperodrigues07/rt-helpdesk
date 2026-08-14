@@ -69,8 +69,9 @@ export const userController = {
   async updateSelf(req: Request, res: Response) {
     const user = requireUser(req);
     const input = updateSelfSchema.parse(req.body);
-    const updated = await userService.updateSelf(user.id, input);
-    return ok(res, updated);
+    await userService.updateSelf(user.id, input);
+    const me = await authService.me(user.id);
+    return ok(res, me);
   },
 
   async uploadAvatar(req: Request, res: Response) {

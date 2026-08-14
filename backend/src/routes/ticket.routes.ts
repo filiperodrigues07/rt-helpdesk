@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { ticketController } from '../controllers/ticketController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { authenticate } from '../middlewares/auth';
+import { requireScreenPermission } from '../middlewares/permission';
 import { uploadTicketAttachment } from '../middlewares/upload';
 
 export const ticketRoutes = Router();
 
-ticketRoutes.use(authenticate);
+ticketRoutes.use(authenticate, requireScreenPermission('screen.chamados'));
 
 ticketRoutes.get('/', asyncHandler(ticketController.list));
 ticketRoutes.get('/board', asyncHandler(ticketController.board));

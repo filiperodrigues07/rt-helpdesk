@@ -2,7 +2,7 @@
 
 Sistema web interno para gestão da equipe de suporte e implantação de sistemas ERP. Centraliza chamados, agenda, clientes, equipe e indicadores de produtividade.
 
-> **Etapa atual: Etapa 12.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes** (com importação/exportação CSV e exclusão), **Agenda**, **Equipe** (usuários + produtividade, com exclusão), **Relatórios** (filtros, gráficos e exportação CSV/PDF), **Notificações** (central no header, por polling) e **Base de Conhecimento** (CRUD completo via API real do site Gestão — ver, criar, editar e excluir artigos sem sair do sistema). Além disso: **logo customizável** (Configurações → Identidade visual, refletida na Sidebar e na tela de login) e **autoatendimento de perfil** (menu "Meu perfil": upload de foto, edição de dados e troca de senha). O que resta é evolução: atribuição automática via TotalChat e exportação de relatórios em Excel.
+> **Etapa atual: Etapa 13.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes** (com importação/exportação CSV e exclusão), **Agenda**, **Equipe** (usuários + produtividade, com exclusão), **Relatórios** (filtros, gráficos e exportação CSV/PDF), **Notificações** (central no header, por polling) e **Base de Conhecimento** (CRUD completo via API real do site Gestão — ver, criar, editar e excluir artigos sem sair do sistema). Além disso: **logo customizável**, **credenciais do TotalChat editáveis em Configurações** (sem precisar mexer no `.env`), **autoatendimento de perfil** e **permissões por tela** (Configurações → Permissões — controla quais papéis acessam cada tela do sistema). O que resta é evolução: atribuição automática via TotalChat e exportação de relatórios em Excel.
 
 ---
 
@@ -199,6 +199,11 @@ POST   /api/tickets/:id/attachments   (multipart/form-data)
 GET    /api/integrations
 POST   /api/integrations/totalchat/test    (testa login — sem efeitos colaterais)
 POST   /api/integrations/totalchat/sync    (sincronização manual — ver aviso na seção TotalChat)
+GET    /api/integrations/totalchat/config  (credenciais salvas — sem a senha; Administrador/Gerente)
+PUT    /api/integrations/totalchat/config  (salva usuário/senha/URL/connectionId/polling; Administrador/Gerente)
+
+GET    /api/permissions/matrix          (papéis x telas — Administrador)
+PUT    /api/permissions/roles/:roleId   (define as telas de um papel — Administrador; bloqueado para o próprio Administrador)
 
 GET    /api/knowledge-base            (?q= para pesquisa — inclui rascunhos, API real do site Gestão)
 GET    /api/knowledge-base/categories (categorias disponíveis, para o formulário de artigo)
@@ -233,7 +238,7 @@ Menu do usuário (canto inferior da Sidebar) → **Meu perfil**: upload de foto,
 
 ## Estrutura do banco (Prisma)
 
-Modelos criados: `User`, `Role`, `Permission`, `Customer`, `CustomerContact`, `Ticket`, `TicketComment`, `TicketHistory`, `TicketAttachment`, `Tag`, `TicketTag`, `Category`, `Appointment`, `SlaRule`, `Notification`, `Integration`.
+Modelos criados: `User`, `Role`, `Permission`, `Customer`, `CustomerContact`, `Ticket`, `TicketComment`, `TicketHistory`, `TicketAttachment`, `Tag`, `TicketTag`, `Category`, `Appointment`, `SlaRule`, `Notification`, `Integration`, `TotalChatConfig`.
 
 Todos os modelos usam UUID como chave primária e possuem `createdAt`/`updatedAt`. O schema já contempla os campos estruturais para a futura integração com o TotalChat (`totalchatConversationId`, `totalchatContactId`, etc.), mas nenhum valor é preenchido até a integração real ser implementada.
 
@@ -245,6 +250,18 @@ Normal   → 24 horas
 Alta     → 8 horas
 Crítica  → 2 horas
 ```
+
+---
+
+## Permissões por tela
+
+Controla quais papéis acessam quais telas — **Configurações → Permissões** (visível só para Administrador). Reaproveita os modelos `Role`/`Permission` já existentes no schema (many-to-many), com uma chave `screen.<nome>` por tela: `screen.chamados`, `screen.agenda`, `screen.clientes`, `screen.base-conhecimento`, `screen.equipe`, `screen.relatorios`, `screen.configuracoes`.
+
+- **Dashboard não entra na matriz** — sempre acessível pra qualquer usuário autenticado (precisa de uma tela inicial).
+- **Administrador sempre tem acesso total** e não aparece editável na matriz — trava de segurança pra nunca ficar sem ninguém conseguindo entrar em Configurações e corrigir um engano na própria matriz.
+- Aplicado nos dois lados: o frontend esconde os itens do menu e redireciona pra `/` se a rota for acessada direto pela URL (`ScreenRoute`); o backend valida de novo em cada request (`requireScreenPermission`), então não dá pra contornar chamando a API diretamente.
+- **Endpoints usados por múltiplas telas ficam fora do bloqueio** (ex.: `GET /customers/minimal` e `GET /users`, usados em dropdowns de Chamados/Agenda mesmo por quem não tem a tela Clientes/Equipe liberada; `GET /integrations/totalchat/attendants`, usado no formulário de usuário em Equipe) — senão bloquear uma tela quebraria funcionalidades de outra.
+- Matriz padrão aplicada no seed (reconfigurável livremente depois, sem afetar o Administrador): Gerente com acesso total; Suporte/Implantação com Chamados, Agenda, Clientes e Base de Conhecimento; Visualização só com Relatórios.
 
 ---
 
@@ -270,6 +287,7 @@ Central de notificações real no header (sininho com contador de não lidas). E
 
 Pontos importantes:
 
+- **Credenciais editáveis em Configurações** (Administrador/Gerente) — usuário, senha, URL da API, Connection ID e liga/desliga do polling automático, sem precisar mexer no `.env`. Fica salvo no banco (`TotalChatConfig`, linha única), com a senha **criptografada em repouso** (AES-256-GCM, chave derivada do `JWT_SECRET`). O `.env` continua funcionando como fallback caso a configuração pelo banco nunca tenha sido preenchida. Salvar reavalia o polling na hora (liga/desliga/muda intervalo sem precisar reiniciar o backend).
 - **Não existe webhook nessa API** — é uma API REST de consulta (pull). A sincronização de chamados é feita por **polling**: o backend busca periodicamente as mensagens não lidas de todos os contatos (`GetTodasMensagensNaoLidas`) e cria/atualiza um `Ticket` (`origin: TOTALCHAT`) para cada contato com mensagem nova.
 - Login é usuário/senha (mesmo login da plataforma TotalChat), token válido por 12h — configurar em `TOTALCHAT_USERNAME` / `TOTALCHAT_PASSWORD` no `.env`. Recomendado usar um usuário de serviço dedicado, não o login pessoal de alguém.
 - Correlação de cliente é feita **por telefone**: se o contato do TotalChat corresponde a um `CustomerContact` já cadastrado, o chamado é vinculado a esse cliente; se não corresponde a nenhum, um `Customer` mínimo é criado automaticamente a partir do nome/telefone do contato (decisão tomada com o usuário em 2026-08-14).

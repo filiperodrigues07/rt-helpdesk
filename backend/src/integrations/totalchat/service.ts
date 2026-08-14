@@ -22,8 +22,19 @@
 
 import { prisma } from '../../utils/prisma';
 import { env } from '../../utils/env';
-import { totalChatClient } from './client';
+import { encrypt } from '../../utils/crypto';
+import { totalChatConfigRepository } from '../../repositories/totalChatConfigRepository';
+import { totalChatClient, invalidateConfig } from './client';
 import { TotalChatMensagem } from './types';
+
+export interface TotalChatConfigInput {
+  apiUrl?: string;
+  username?: string;
+  password?: string;
+  connectionId?: number | null;
+  pollingEnabled?: boolean;
+  pollIntervalSeconds?: number;
+}
 
 const MAX_PAGES_PER_SYNC = 10;
 // A API do TotalChat limita a ~2 requisições/segundo (header X-Rate-Limit-Limit: 1s,
@@ -196,7 +207,7 @@ export const totalChatService = {
   async getIntegrationStatus() {
     return {
       provider: 'TOTALCHAT' as const,
-      status: totalChatClient.isConfigured() ? 'CONECTADO' : 'AGUARDANDO_CONFIGURACAO',
+      status: (await totalChatClient.isConfigured()) ? 'CONECTADO' : 'AGUARDANDO_CONFIGURACAO',
     };
   },
 
@@ -205,8 +216,36 @@ export const totalChatService = {
     return { configured: true };
   },
 
+  async getConfig() {
+    const dbConfig = await totalChatConfigRepository.get();
+    return {
+      apiUrl: dbConfig?.apiUrl || env.totalChat.apiUrl,
+      username: dbConfig?.username || env.totalChat.username || '',
+      hasPassword: !!(dbConfig?.password || env.totalChat.password),
+      connectionId: dbConfig?.connectionId ?? env.totalChat.connectionId ?? null,
+      pollingEnabled: dbConfig?.pollingEnabled ?? env.totalChat.pollingEnabled,
+      pollIntervalSeconds: dbConfig?.pollIntervalSeconds ?? env.totalChat.pollIntervalSeconds,
+    };
+  },
+
+  async updateConfig(input: TotalChatConfigInput) {
+    await totalChatConfigRepository.upsert({
+      apiUrl: input.apiUrl,
+      username: input.username,
+      ...(input.password ? { password: encrypt(input.password) } : {}),
+      connectionId: input.connectionId,
+      pollingEnabled: input.pollingEnabled,
+      pollIntervalSeconds: input.pollIntervalSeconds,
+    });
+
+    invalidateConfig();
+    await refreshTotalChatPolling();
+
+    return this.getConfig();
+  },
+
   async listAttendants() {
-    if (!totalChatClient.isConfigured()) {
+    if (!(await totalChatClient.isConfigured())) {
       return [];
     }
 
@@ -227,7 +266,7 @@ export const totalChatService = {
   },
 
   async syncTickets() {
-    if (!totalChatClient.isConfigured()) {
+    if (!(await totalChatClient.isConfigured())) {
       return { skipped: true, reason: 'not_configured' as const };
     }
 
@@ -279,27 +318,35 @@ export const totalChatService = {
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-export function startTotalChatPolling() {
-  if (!env.totalChat.pollingEnabled) return;
-  if (!totalChatClient.isConfigured()) {
-    console.warn('[totalchat] polling habilitado mas TOTALCHAT_USERNAME/PASSWORD não configurados — ignorando.');
+export function stopTotalChatPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+// Reavalia e reinicia o polling a partir da configuração atual (banco, com
+// fallback pro .env) — chamado no boot do servidor e sempre que a configuração
+// é salva em Configurações, para o intervalo/liga-desliga valerem na hora.
+export async function refreshTotalChatPolling() {
+  stopTotalChatPolling();
+
+  const dbConfig = await totalChatConfigRepository.get();
+  const pollingEnabled = dbConfig?.pollingEnabled ?? env.totalChat.pollingEnabled;
+  const pollIntervalSeconds = dbConfig?.pollIntervalSeconds ?? env.totalChat.pollIntervalSeconds;
+
+  if (!pollingEnabled) return;
+  if (!(await totalChatClient.isConfigured())) {
+    console.warn('[totalchat] polling habilitado mas usuário/senha não configurados — ignorando.');
     return;
   }
-  if (pollTimer) return;
 
-  const intervalMs = env.totalChat.pollIntervalSeconds * 1000;
-  console.log(`[totalchat] polling iniciado — a cada ${env.totalChat.pollIntervalSeconds}s`);
+  const intervalMs = pollIntervalSeconds * 1000;
+  console.log(`[totalchat] polling iniciado — a cada ${pollIntervalSeconds}s`);
 
   pollTimer = setInterval(() => {
     totalChatService.syncTickets().catch((error) => {
       console.error('[totalchat] erro na sincronização periódica:', error);
     });
   }, intervalMs);
-}
-
-export function stopTotalChatPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
 }

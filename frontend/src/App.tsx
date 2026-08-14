@@ -5,6 +5,8 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/toaster';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { ScreenRoute } from '@/components/ScreenRoute';
+import { SCREEN_PERMISSIONS } from '@/utils/screenPermissions';
 import { AppLayout } from '@/layouts/AppLayout';
 import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
@@ -42,18 +44,39 @@ export function App() {
                 <Route element={<ProtectedRoute />}>
                   <Route element={<AppLayout />}>
                     <Route path="/" element={<DashboardPage />} />
-                    <Route path="/chamados" element={<TicketsPage />} />
-                    <Route path="/chamados/novo" element={<CreateTicketPage />} />
-                    <Route path="/chamados/:id" element={<TicketDetailPage />} />
-                    <Route path="/agenda" element={<AgendaPage />} />
-                    <Route path="/clientes" element={<CustomersPage />} />
-                    <Route path="/clientes/novo" element={<CustomerFormPage />} />
-                    <Route path="/clientes/:id" element={<CustomerDetailPage />} />
-                    <Route path="/clientes/:id/editar" element={<CustomerFormPage />} />
-                    <Route path="/base-de-conhecimento" element={<KnowledgeBasePage />} />
-                    <Route path="/equipe" element={<TeamPage />} />
-                    <Route path="/relatorios" element={<ReportsPage />} />
-                    <Route path="/configuracoes" element={<SettingsPage />} />
+
+                    <Route element={<ScreenRoute permission={SCREEN_PERMISSIONS.chamados} />}>
+                      <Route path="/chamados" element={<TicketsPage />} />
+                      <Route path="/chamados/novo" element={<CreateTicketPage />} />
+                      <Route path="/chamados/:id" element={<TicketDetailPage />} />
+                    </Route>
+
+                    <Route element={<ScreenRoute permission={SCREEN_PERMISSIONS.agenda} />}>
+                      <Route path="/agenda" element={<AgendaPage />} />
+                    </Route>
+
+                    <Route element={<ScreenRoute permission={SCREEN_PERMISSIONS.clientes} />}>
+                      <Route path="/clientes" element={<CustomersPage />} />
+                      <Route path="/clientes/novo" element={<CustomerFormPage />} />
+                      <Route path="/clientes/:id" element={<CustomerDetailPage />} />
+                      <Route path="/clientes/:id/editar" element={<CustomerFormPage />} />
+                    </Route>
+
+                    <Route element={<ScreenRoute permission={SCREEN_PERMISSIONS.baseConhecimento} />}>
+                      <Route path="/base-de-conhecimento" element={<KnowledgeBasePage />} />
+                    </Route>
+
+                    <Route element={<ScreenRoute permission={SCREEN_PERMISSIONS.equipe} />}>
+                      <Route path="/equipe" element={<TeamPage />} />
+                    </Route>
+
+                    <Route element={<ScreenRoute permission={SCREEN_PERMISSIONS.relatorios} />}>
+                      <Route path="/relatorios" element={<ReportsPage />} />
+                    </Route>
+
+                    <Route element={<ScreenRoute permission={SCREEN_PERMISSIONS.configuracoes} />}>
+                      <Route path="/configuracoes" element={<SettingsPage />} />
+                    </Route>
                   </Route>
                 </Route>
               </Routes>

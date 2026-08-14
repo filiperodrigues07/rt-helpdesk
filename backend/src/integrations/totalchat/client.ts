@@ -6,6 +6,8 @@
 
 import { env } from '../../utils/env';
 import { AppError } from '../../utils/AppError';
+import { decrypt } from '../../utils/crypto';
+import { totalChatConfigRepository } from '../../repositories/totalChatConfigRepository';
 import {
   TotalChatAtendimento,
   TotalChatAtendimentoAberto,
@@ -35,23 +37,56 @@ interface CachedToken {
 
 let cachedToken: CachedToken | null = null;
 
-function isConfigured(): boolean {
-  return !!(env.totalChat.username && env.totalChat.password);
+interface ResolvedConfig {
+  apiUrl: string;
+  username?: string;
+  password?: string;
+  connectionId?: number;
 }
 
-function baseUrl(): string {
-  return env.totalChat.apiUrl.replace(/\/?$/, '/');
+let cachedConfig: ResolvedConfig | null = null;
+
+// As credenciais podem ser cadastradas em Configurações (guardadas no banco,
+// senha criptografada) ou via .env — o banco tem prioridade quando presente.
+// invalidateConfig() é chamado depois de salvar uma configuração nova.
+async function loadConfig(): Promise<ResolvedConfig> {
+  if (cachedConfig) return cachedConfig;
+
+  const dbConfig = await totalChatConfigRepository.get();
+  cachedConfig = {
+    apiUrl: dbConfig?.apiUrl || env.totalChat.apiUrl,
+    username: dbConfig?.username || env.totalChat.username,
+    password: dbConfig?.password ? decrypt(dbConfig.password) : env.totalChat.password,
+    connectionId: dbConfig?.connectionId ?? env.totalChat.connectionId,
+  };
+  return cachedConfig;
+}
+
+export function invalidateConfig(): void {
+  cachedConfig = null;
+  cachedToken = null;
+}
+
+async function isConfigured(): Promise<boolean> {
+  const config = await loadConfig();
+  return !!(config.username && config.password);
+}
+
+async function baseUrl(): Promise<string> {
+  const config = await loadConfig();
+  return config.apiUrl.replace(/\/?$/, '/');
 }
 
 async function login(): Promise<string> {
-  if (!isConfigured()) {
-    throw new AppError('Integração com o TotalChat não configurada (TOTALCHAT_USERNAME/TOTALCHAT_PASSWORD ausentes)', 400);
+  const config = await loadConfig();
+  if (!config.username || !config.password) {
+    throw new AppError('Integração com o TotalChat não configurada (usuário/senha ausentes)', 400);
   }
 
-  const response = await fetch(new URL('v1/account/login', baseUrl()), {
+  const response = await fetch(new URL('v1/account/login', await baseUrl()), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: env.totalChat.username, password: env.totalChat.password }),
+    body: JSON.stringify({ username: config.username, password: config.password }),
   });
 
   if (!response.ok) {
@@ -77,8 +112,8 @@ interface RequestOptions {
   retryOn401?: boolean;
 }
 
-function buildUrl(path: string, query?: RequestOptions['query']): URL {
-  const url = new URL(path, baseUrl());
+async function buildUrl(path: string, query?: RequestOptions['query']): Promise<URL> {
+  const url = new URL(path, await baseUrl());
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined) url.searchParams.append(key, String(value));
@@ -89,7 +124,7 @@ function buildUrl(path: string, query?: RequestOptions['query']): URL {
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const token = await getToken();
-  const url = buildUrl(path, options.query);
+  const url = await buildUrl(path, options.query);
 
   const response = await fetch(url, {
     method: options.method ?? 'GET',
@@ -119,7 +154,7 @@ async function requestMultipart<T>(
   file: { buffer: Buffer; fileName: string; mimeType: string; fieldName: 'Arquivo' | 'Imagem' },
 ): Promise<T> {
   const token = await getToken();
-  const url = buildUrl(path);
+  const url = await buildUrl(path);
 
   const formData = new FormData();
   formData.append('Dados', JSON.stringify(dados));
@@ -206,8 +241,8 @@ export const totalChatClient = {
     });
   },
 
-  getContatosPorEtiqueta(etiquetaIds: number[], pag = 0) {
-    const url = buildUrl('v1/Contato/GetContatosPorEtiqueta');
+  async getContatosPorEtiqueta(etiquetaIds: number[], pag = 0) {
+    const url = await buildUrl('v1/Contato/GetContatosPorEtiqueta');
     etiquetaIds.forEach((id) => url.searchParams.append('etiquetaId', String(id)));
     url.searchParams.set('pag', String(pag));
     return request<TotalChatContatosPorEtiquetaResponse>(url.pathname + url.search);

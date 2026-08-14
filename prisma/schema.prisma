@@ -400,3 +400,21 @@ model Integration {
 
   @@map("integrations")
 }
+
+// Configuração das credenciais do TotalChat, editável em Configurações.
+// Linha única (singleton). password fica criptografado (ver utils/crypto.ts) —
+// nunca é devolvido em texto plano pela API depois de salvo.
+model TotalChatConfig {
+  id                  String   @id @default(uuid())
+  apiUrl              String?
+  username            String?
+  password            String?
+  connectionId        Int?
+  pollingEnabled      Boolean  @default(false)
+  pollIntervalSeconds Int      @default(60)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("totalchat_config")
+}

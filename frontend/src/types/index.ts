@@ -7,6 +7,7 @@ export interface AuthenticatedUser {
   jobTitle: string | null;
   avatarUrl: string | null;
   role: RoleName;
+  permissions: string[];
 }
 
 export interface LoginResponse {

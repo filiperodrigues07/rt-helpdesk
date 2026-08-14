@@ -5,14 +5,14 @@ export const userRepository = {
   findByEmail(email: string) {
     return prisma.user.findUnique({
       where: { email },
-      include: { role: true },
+      include: { role: { include: { permissions: true } } },
     });
   },
 
   findById(id: string) {
     return prisma.user.findUnique({
       where: { id },
-      include: { role: true },
+      include: { role: { include: { permissions: true } } },
     });
   },
 

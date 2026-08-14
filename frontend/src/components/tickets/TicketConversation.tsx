@@ -1,20 +1,47 @@
 import * as React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, Image, Loader2, Mic, MessageSquareText } from 'lucide-react';
+import { FileText, Loader2, MessageSquareText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTicketConversation } from '@/hooks/useTicket';
+import type { TicketConversationMessage } from '@/services/ticketService';
 import { cn } from '@/utils/cn';
-
-const MEDIA_ICONS: Record<string, typeof Image> = {
-  imagem: Image,
-  áudio: Mic,
-  documento: FileText,
-};
 
 function stripSenderPrefix(text: string, senderName: string): string {
   const prefix = `*${senderName}:*\n`;
   return text.startsWith(prefix) ? text.slice(prefix.length) : text;
+}
+
+function MessageMedia({ message }: { message: TicketConversationMessage }) {
+  if (!message.mediaType || !message.mediaUrl) return null;
+
+  if (message.mediaType === 'imagem') {
+    return (
+      <a href={message.mediaUrl} target="_blank" rel="noreferrer" className="mt-1 block">
+        <img src={message.mediaUrl} alt="Imagem enviada" className="max-h-64 rounded-md" />
+      </a>
+    );
+  }
+
+  if (message.mediaType === 'áudio') {
+    return (
+      <audio controls className="mt-1 h-9 max-w-full">
+        <source src={message.mediaUrl} />
+      </audio>
+    );
+  }
+
+  return (
+    <a
+      href={message.mediaUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-1 flex items-center gap-1.5 text-xs text-primary hover:underline"
+    >
+      <FileText className="h-3.5 w-3.5" />
+      Abrir documento
+    </a>
+  );
 }
 
 export function TicketConversation({ ticketId }: { ticketId: string }) {
@@ -51,7 +78,6 @@ export function TicketConversation({ ticketId }: { ticketId: string }) {
     <ul className="space-y-3">
       {data.map((message) => {
         const isCliente = message.direction === 'cliente';
-        const MediaIcon = message.mediaType ? MEDIA_ICONS[message.mediaType] : null;
         const text = stripSenderPrefix(message.text, message.senderName).trim();
 
         return (
@@ -73,12 +99,7 @@ export function TicketConversation({ ticketId }: { ticketId: string }) {
 
               {text && <p className="whitespace-pre-wrap">{text}</p>}
 
-              {MediaIcon && (
-                <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <MediaIcon className="h-3.5 w-3.5" />
-                  {message.mediaType} enviado(a) — sem visualização disponível
-                </div>
-              )}
+              <MessageMedia message={message} />
             </div>
           </li>
         );

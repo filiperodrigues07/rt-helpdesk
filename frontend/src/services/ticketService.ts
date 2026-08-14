@@ -18,6 +18,7 @@ export interface TicketConversationMessage {
   senderName: string;
   text: string;
   mediaType: string | null;
+  mediaUrl: string | null;
   timestamp: string | null;
 }
 

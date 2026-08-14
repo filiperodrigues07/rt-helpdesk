@@ -144,6 +144,18 @@ function parseTotalChatDate(h: string): string | null {
   return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)).toISOString();
 }
 
+const MEDIA_BASE_URL = 'https://media.totalchat.com.br/';
+
+// `img`/`arqu` às vezes vêm como URL absoluta (ex.: GetMensagens) e às vezes
+// como caminho relativo (ex.: GetTodasMensagensNaoLidas) — mesmo domínio de
+// mídia nos dois casos, público e sem autenticação (confirmado em 2026-08-14;
+// não é documentado, mas funciona igual pra imagem, áudio e documento).
+function resolveMediaUrl(path: string): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return MEDIA_BASE_URL + path.replace(/^\/+/, '');
+}
+
 async function fetchConversationMessages(clienteId: number): Promise<TotalChatMensagem[]> {
   const byId = new Map<number, TotalChatMensagem>();
 
@@ -254,6 +266,7 @@ export const totalChatService = {
           : (message.aid && attendantNameById.get(String(message.aid))) || message.f || 'Equipe',
       text: message.m || '',
       mediaType: message.tipo ? (MEDIA_TYPE_LABELS[message.tipo] ?? null) : null,
+      mediaUrl: resolveMediaUrl(message.img || message.arqu),
       timestamp: parseTotalChatDate(message.h),
     }));
   },

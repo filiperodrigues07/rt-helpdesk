@@ -20,8 +20,7 @@ export function KnowledgeBasePage() {
       <div>
         <h1 className="text-xl font-semibold">Base de Conhecimento</h1>
         <p className="text-sm text-muted-foreground">
-          Artigos consultados a partir da Base de Conhecimento existente. No momento, exibindo dados
-          mockados — a integração real com a API externa será conectada futuramente.
+          Artigos consultados em tempo real na Base de Conhecimento do site Gestão.
         </p>
       </div>
 

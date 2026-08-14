@@ -1,12 +1,13 @@
-// Camada de integração com a Base de Conhecimento (sistema externo já existente).
+// Camada de integração com a Base de Conhecimento (sistema externo já existente,
+// o site "Gestão" em https://gestaoconsultorias.fly.dev). Consome o endpoint
+// GET /api/knowledge-base/articles (protegido por header X-API-Key) desse site.
 //
-// A API real ainda não foi disponibilizada. Enquanto isso, este client expõe
-// os mesmos métodos que a integração real terá, mas retorna dados mockados
-// mantidos localmente. Quando a API real estiver disponível, substituir a
-// implementação abaixo por chamadas HTTP reais — a interface pública
-// (métodos e tipos de retorno) deve permanecer a mesma para não impactar
-// quem consome este client.
+// Se KNOWLEDGE_BASE_API_URL/KNOWLEDGE_BASE_API_KEY não estiverem configurados,
+// cai de volta para os dados mockados abaixo — mantém o ambiente utilizável
+// sem depender do sistema externo estar no ar.
 
+import { env } from '../../utils/env';
+import { AppError } from '../../utils/AppError';
 import { KnowledgeBaseArticle } from './types';
 
 const MOCK_ARTICLES: KnowledgeBaseArticle[] = [
@@ -44,31 +45,50 @@ const MOCK_ARTICLES: KnowledgeBaseArticle[] = [
   },
 ];
 
+function isConfigured(): boolean {
+  return !!(env.knowledgeBase.apiUrl && env.knowledgeBase.apiKey);
+}
+
+async function fetchArticles(query?: string): Promise<KnowledgeBaseArticle[]> {
+  const url = new URL('/api/knowledge-base/articles', env.knowledgeBase.apiUrl);
+  if (query) url.searchParams.set('q', query);
+
+  const response = await fetch(url, {
+    headers: { 'X-API-Key': env.knowledgeBase.apiKey as string },
+  });
+
+  if (!response.ok) {
+    throw new AppError(`Erro na API da Base de Conhecimento (HTTP ${response.status})`, 502);
+  }
+
+  const body = (await response.json()) as { success: boolean; data: KnowledgeBaseArticle[] };
+  return body.data;
+}
+
 export const knowledgeBaseClient = {
-  isConfigured(): boolean {
-    // TODO: retornar true quando a URL/token da API real forem configurados.
-    return false;
-  },
+  isConfigured,
 
   async listArticles(): Promise<KnowledgeBaseArticle[]> {
-    // TODO: substituir por GET /api/articles na API real.
-    return MOCK_ARTICLES;
+    if (!isConfigured()) return MOCK_ARTICLES;
+    return fetchArticles();
   },
 
   async getArticleById(id: string): Promise<KnowledgeBaseArticle | null> {
-    // TODO: substituir por GET /api/articles/:id na API real.
-    return MOCK_ARTICLES.find((article) => article.id === id) ?? null;
+    if (!isConfigured()) return MOCK_ARTICLES.find((article) => article.id === id) ?? null;
+    const articles = await fetchArticles();
+    return articles.find((article) => article.id === id) ?? null;
   },
 
   async searchArticles(query: string): Promise<KnowledgeBaseArticle[]> {
-    // TODO: substituir por GET /api/articles/search?q= na API real.
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return MOCK_ARTICLES;
-
-    return MOCK_ARTICLES.filter(
-      (article) =>
-        article.title.toLowerCase().includes(normalized) ||
-        article.summary.toLowerCase().includes(normalized),
-    );
+    const normalized = query.trim();
+    if (!isConfigured()) {
+      const lower = normalized.toLowerCase();
+      if (!lower) return MOCK_ARTICLES;
+      return MOCK_ARTICLES.filter(
+        (article) =>
+          article.title.toLowerCase().includes(lower) || article.summary.toLowerCase().includes(lower),
+      );
+    }
+    return fetchArticles(normalized || undefined);
   },
 };

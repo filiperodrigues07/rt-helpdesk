@@ -30,4 +30,8 @@ export const env = {
     pollingEnabled: process.env.TOTALCHAT_POLLING_ENABLED === 'true',
     pollIntervalSeconds: Number(process.env.TOTALCHAT_POLL_INTERVAL_SECONDS ?? 60),
   },
+  knowledgeBase: {
+    apiUrl: process.env.KNOWLEDGE_BASE_API_URL || undefined,
+    apiKey: process.env.KNOWLEDGE_BASE_API_KEY || undefined,
+  },
 };

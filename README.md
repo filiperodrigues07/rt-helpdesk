@@ -2,7 +2,7 @@
 
 Sistema web interno para gestão da equipe de suporte e implantação de sistemas ERP. Centraliza chamados, agenda, clientes, equipe e indicadores de produtividade.
 
-> **Etapa atual: Etapa 11.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes** (com importação/exportação CSV), **Agenda**, **Equipe** (usuários + produtividade, com exclusão), **Relatórios** (filtros, gráficos e exportação CSV/PDF) e **Notificações** (central no header, por polling). Além disso: **logo customizável** (Configurações → Identidade visual, refletida na Sidebar e na tela de login) e **autoatendimento de perfil** (menu "Meu perfil": upload de foto, edição de dados e troca de senha). O que resta é evolução: atribuição automática via TotalChat, exportação de relatórios em Excel, e a API real da Base de Conhecimento quando disponível.
+> **Etapa atual: Etapa 12.** Todos os módulos da especificação original estão implementados: Fundação, **Chamados**, **integração real com o TotalChat**, **Clientes** (com importação/exportação CSV e exclusão), **Agenda**, **Equipe** (usuários + produtividade, com exclusão), **Relatórios** (filtros, gráficos e exportação CSV/PDF), **Notificações** (central no header, por polling) e **Base de Conhecimento** (conectada à API real do site Gestão). Além disso: **logo customizável** (Configurações → Identidade visual, refletida na Sidebar e na tela de login) e **autoatendimento de perfil** (menu "Meu perfil": upload de foto, edição de dados e troca de senha). O que resta é evolução: atribuição automática via TotalChat e exportação de relatórios em Excel.
 
 ---
 
@@ -276,7 +276,10 @@ Pontos importantes:
 
 ### Base de Conhecimento
 
-A Base de Conhecimento já existe em outro sistema e **não é duplicada** aqui. A pasta `backend/src/integrations/knowledge-base/` expõe a mesma interface que a integração real terá, mas retorna dados mockados localmente até a API real ser disponibilizada.
+**Implementada e conectada à API real** do site Gestão (`https://gestaoconsultorias.fly.dev`), que expõe `GET /api/knowledge-base/articles` (protegido por header `X-API-Key`, retorna só artigos com status `published`). A Base de Conhecimento não é duplicada aqui — o RT HELPDESK só consulta esse endpoint (`backend/src/integrations/knowledge-base/`).
+
+- Configurar `KNOWLEDGE_BASE_API_URL` e `KNOWLEDGE_BASE_API_KEY` no `.env` (mesma chave configurada como secret `KB_API_KEY` no Fly.io do site Gestão). Sem essas variáveis, o client cai automaticamente para os dados mockados que já existiam, então o ambiente continua funcional sem a integração real.
+- Suporta busca (`?q=`, aplicada em título/resumo) e listagem — é o que a tela **Base de Conhecimento** usa.
 
 A tela **Configurações → Integrações** nunca exibe uma integração como "Conectada" sem que ela esteja de fato configurada.
 
@@ -286,5 +289,4 @@ A tela **Configurações → Integrações** nunca exibe uma integração como "
 
 1. Usar o vínculo usuário↔atendente do TotalChat para atribuição automática de responsável em chamados criados via TotalChat.
 2. Exportação de relatórios em Excel (hoje já tem CSV e PDF).
-3. Conectar a API real da Base de Conhecimento, substituindo os dados mockados.
-4. Se o volume de usuários simultâneos crescer, migrar as notificações de polling para WebSocket.
+3. Se o volume de usuários simultâneos crescer, migrar as notificações de polling para WebSocket.

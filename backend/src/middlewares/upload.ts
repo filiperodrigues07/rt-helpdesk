@@ -91,3 +91,21 @@ export const uploadLogo = multer({
   limits: { fileSize: 3 * 1024 * 1024 },
   fileFilter: imageFileFilter,
 }).single('file');
+
+const ARTICLE_IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+
+function articleImageFileFilter(_req: unknown, file: Express.Multer.File, callback: multer.FileFilterCallback) {
+  if (!ARTICLE_IMAGE_MIME_TYPES.has(file.mimetype)) {
+    callback(new AppError('Envie uma imagem (PNG, JPG, GIF ou WEBP)', 400));
+    return;
+  }
+  callback(null, true);
+}
+
+// Não grava em disco — o RT HELPDESK só repassa o buffer pro site Gestão,
+// que é quem persiste e reprocessa a imagem (sharp) do lado dele.
+export const uploadArticleImage = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: articleImageFileFilter,
+}).single('file');

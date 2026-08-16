@@ -62,4 +62,13 @@ export const knowledgeBaseService = {
   async remove(id: string) {
     await api.delete<ApiSuccess<{ success: boolean }>>(`/knowledge-base/${encodeURIComponent(id)}`);
   },
+
+  async uploadImage(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.set('file', file);
+    const { data } = await api.post<ApiSuccess<{ url: string }>>('/knowledge-base/images', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.data.url;
+  },
 };

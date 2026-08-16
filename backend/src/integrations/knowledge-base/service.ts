@@ -32,4 +32,8 @@ export const knowledgeBaseService = {
   deleteArticle(id: string) {
     return knowledgeBaseClient.deleteArticle(id);
   },
+
+  uploadImage(file: { buffer: Buffer; originalname: string; mimetype: string }) {
+    return knowledgeBaseClient.uploadImage(file);
+  },
 };

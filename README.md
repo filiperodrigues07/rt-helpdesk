@@ -214,6 +214,7 @@ GET    /api/knowledge-base/:id        (artigo com conteúdo completo)
 POST   /api/knowledge-base            (cria artigo — Administrador/Gerente)
 PATCH  /api/knowledge-base/:id        (atualiza, incl. status rascunho/publicado — Administrador/Gerente)
 DELETE /api/knowledge-base/:id        (Administrador/Gerente)
+POST   /api/knowledge-base/images     (upload de imagem do editor — multipart, PNG/JPG/GIF/WEBP até 50MB, Administrador/Gerente)
 ```
 
 ## Rotas do frontend

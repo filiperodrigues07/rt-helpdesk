@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { knowledgeBaseService, type KnowledgeBaseArticleInput } from '@/services/knowledgeBaseService';
+import {
+  knowledgeBaseService,
+  type KnowledgeBaseArticle,
+  type KnowledgeBaseArticleInput,
+} from '@/services/knowledgeBaseService';
 
 export function useKnowledgeBaseArticles(query?: string) {
   return useQuery({
@@ -38,6 +42,24 @@ export function useUpdateArticle(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: Partial<KnowledgeBaseArticleInput>) => knowledgeBaseService.update(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-base'] });
+    },
+  });
+}
+
+export function useDuplicateArticle() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (article: KnowledgeBaseArticle) =>
+      knowledgeBaseService.create({
+        title: `${article.title} (cópia)`,
+        summary: article.summary,
+        content: article.content ?? '',
+        categoryId: article.categoryId as number,
+        status: 'draft',
+        tags: article.tags,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-base'] });
     },

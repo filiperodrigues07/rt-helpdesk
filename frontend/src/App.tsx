@@ -18,6 +18,8 @@ import { CustomersPage } from '@/pages/CustomersPage';
 import { CustomerFormPage } from '@/pages/CustomerFormPage';
 import { CustomerDetailPage } from '@/pages/CustomerDetailPage';
 import { KnowledgeBasePage } from '@/pages/KnowledgeBasePage';
+import { KnowledgeBaseArticlePage } from '@/pages/KnowledgeBaseArticlePage';
+import { KnowledgeBaseArticleFormPage } from '@/pages/KnowledgeBaseArticleFormPage';
 import { TeamPage } from '@/pages/TeamPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
@@ -64,6 +66,9 @@ export function App() {
 
                     <Route element={<ScreenRoute permission={SCREEN_PERMISSIONS.baseConhecimento} />}>
                       <Route path="/base-de-conhecimento" element={<KnowledgeBasePage />} />
+                      <Route path="/base-de-conhecimento/novo" element={<KnowledgeBaseArticleFormPage />} />
+                      <Route path="/base-de-conhecimento/:id" element={<KnowledgeBaseArticlePage />} />
+                      <Route path="/base-de-conhecimento/:id/editar" element={<KnowledgeBaseArticleFormPage />} />
                     </Route>
 
                     <Route element={<ScreenRoute permission={SCREEN_PERMISSIONS.equipe} />}>

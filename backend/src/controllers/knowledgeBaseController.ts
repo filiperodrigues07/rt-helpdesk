@@ -51,4 +51,16 @@ export const knowledgeBaseController = {
     await knowledgeBaseService.deleteArticle(req.params.id);
     return ok(res, { success: true });
   },
+
+  async uploadImage(req: Request, res: Response) {
+    if (!req.file) {
+      throw new AppError('Nenhuma imagem enviada', 400);
+    }
+    const result = await knowledgeBaseService.uploadImage({
+      buffer: req.file.buffer,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+    });
+    return created(res, result);
+  },
 };

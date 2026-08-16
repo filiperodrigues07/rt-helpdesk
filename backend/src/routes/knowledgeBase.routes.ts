@@ -3,6 +3,7 @@ import { knowledgeBaseController } from '../controllers/knowledgeBaseController'
 import { asyncHandler } from '../utils/asyncHandler';
 import { authenticate, authorize } from '../middlewares/auth';
 import { requireScreenPermission } from '../middlewares/permission';
+import { uploadArticleImage } from '../middlewares/upload';
 
 export const knowledgeBaseRoutes = Router();
 
@@ -18,3 +19,9 @@ const canManageArticles = [authorize('ADMINISTRADOR', 'GERENTE'), requireScreenP
 knowledgeBaseRoutes.post('/', ...canManageArticles, asyncHandler(knowledgeBaseController.create));
 knowledgeBaseRoutes.patch('/:id', ...canManageArticles, asyncHandler(knowledgeBaseController.update));
 knowledgeBaseRoutes.delete('/:id', ...canManageArticles, asyncHandler(knowledgeBaseController.remove));
+knowledgeBaseRoutes.post(
+  '/images',
+  ...canManageArticles,
+  uploadArticleImage,
+  asyncHandler(knowledgeBaseController.uploadImage),
+);

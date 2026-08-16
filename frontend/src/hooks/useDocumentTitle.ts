@@ -17,14 +17,14 @@ const SECTION_LABELS: Record<string, string> = {
 const NEW_LABELS: Record<string, string> = {
   chamados: 'Novo chamado',
   clientes: 'Novo cliente',
+  'base-de-conhecimento': 'Novo artigo',
 };
 
 const DETAIL_LABELS: Record<string, string> = {
   chamados: 'Chamado',
   clientes: 'Cliente',
+  'base-de-conhecimento': 'Artigo',
 };
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function resolvePageTitle(pathname: string): string {
   const segments = pathname.split('/').filter(Boolean);
@@ -38,7 +38,8 @@ function resolvePageTitle(pathname: string): string {
 
   if (last === 'novo') return NEW_LABELS[section] ?? 'Novo';
   if (last === 'editar') return `Editar ${DETAIL_LABELS[section] ?? ''}`.trim();
-  if (UUID_PATTERN.test(last)) return DETAIL_LABELS[section] ?? SECTION_LABELS[section] ?? 'Detalhes';
+  // Qualquer rota com um segundo segmento (id ou slug) é uma tela de detalhe.
+  if (segments.length > 1) return DETAIL_LABELS[section] ?? SECTION_LABELS[section] ?? 'Detalhes';
 
   return SECTION_LABELS[section] ?? SECTION_LABELS[''];
 }

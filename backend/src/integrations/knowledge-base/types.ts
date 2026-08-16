@@ -31,3 +31,7 @@ export interface KnowledgeBaseArticleInput {
   status: KnowledgeBaseArticleStatus;
   tags?: string[];
 }
+
+export interface KnowledgeBaseImageUploadResult {
+  url: string; // sempre absoluta (origin do site Gestão + path relativo devolvido pela API)
+}

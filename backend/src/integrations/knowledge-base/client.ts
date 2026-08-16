@@ -11,7 +11,7 @@
 
 import { env } from '../../utils/env';
 import { AppError } from '../../utils/AppError';
-import { KnowledgeBaseArticle, KnowledgeBaseArticleInput, KnowledgeBaseCategory } from './types';
+import { KnowledgeBaseArticle, KnowledgeBaseArticleInput, KnowledgeBaseCategory, KnowledgeBaseImageUploadResult } from './types';
 
 const MOCK_ARTICLES: KnowledgeBaseArticle[] = [
   {
@@ -141,5 +141,31 @@ export const knowledgeBaseClient = {
   async deleteArticle(id: string): Promise<void> {
     requireConfigured();
     await request(`/api/knowledge-base/articles/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  async uploadImage(file: { buffer: Buffer; originalname: string; mimetype: string }): Promise<KnowledgeBaseImageUploadResult> {
+    requireConfigured();
+
+    const form = new FormData();
+    form.set('file', new Blob([file.buffer], { type: file.mimetype }), file.originalname);
+
+    const response = await fetch(new URL('/api/admin/article-images', env.knowledgeBase.apiUrl), {
+      method: 'POST',
+      headers: { 'X-API-Key': env.knowledgeBase.apiKey as string },
+      body: form,
+    });
+
+    const body = (await response.json().catch(() => null)) as
+      | { success: boolean; url?: string; errors?: Record<string, string[]> }
+      | null;
+
+    if (!response.ok || !body?.success || !body.url) {
+      const message =
+        body?.errors?.file?.[0] ?? body?.errors?._form?.[0] ?? `Erro ao enviar imagem (HTTP ${response.status})`;
+      throw new AppError(message, response.status >= 400 && response.status < 500 ? response.status : 502);
+    }
+
+    const url = body.url.startsWith('/') ? `${new URL(env.knowledgeBase.apiUrl as string).origin}${body.url}` : body.url;
+    return { url };
   },
 };

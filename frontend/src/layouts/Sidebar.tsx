@@ -57,14 +57,14 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
         className,
       )}
     >
-      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
-        <BrandLogo className="h-7 w-7 shrink-0" />
+      <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4">
+        <BrandLogo className="h-8 w-8 shrink-0" />
         {!collapsed && (
           <span className="truncate text-sm font-semibold tracking-wide">RT HELPDESK</span>
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2.5">
         {NAV_ITEMS.filter((item) => !item.permission || hasScreenPermission(user, item.permission)).map((item) => {
           const Icon = item.icon;
           const link = (
@@ -74,17 +74,24 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                   'hover:bg-accent hover:text-accent-foreground',
                   isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-sidebar-foreground/80',
+                    ? 'bg-primary/10 font-semibold text-primary'
+                    : 'text-sidebar-foreground/70',
                   collapsed && 'justify-center px-0',
                 )
               }
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <span className="absolute inset-y-1 left-0 w-[3px] rounded-full bg-primary" />
+                  )}
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                </>
+              )}
             </NavLink>
           );
 
@@ -112,9 +119,9 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
 
         <Separator />
 
-        <div className={cn('mt-2 flex items-center gap-2 rounded-md p-2', collapsed && 'justify-center')}>
+        <div className={cn('mt-2 flex items-center gap-2 rounded-md', collapsed && 'justify-center')}>
           <UserMenu collapsed={collapsed}>
-            <button className="flex w-full items-center gap-2 rounded-md text-left outline-none">
+            <button className="flex w-full items-center gap-2 rounded-md p-2 text-left outline-none transition-colors hover:bg-accent">
               <UserAvatar name={user?.name ?? '--'} avatarUrl={user?.avatarUrl} />
               {!collapsed && (
                 <div className="min-w-0 flex-1">

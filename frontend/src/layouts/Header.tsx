@@ -88,7 +88,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   }, []);
 
   return (
-    <header className="flex h-14 items-center justify-between gap-4 border-b border-border bg-background px-4">
+    <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b border-border bg-background/85 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="flex min-w-0 items-center gap-2">
         <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuClick}>
           <Menu className="h-4 w-4" />

@@ -51,20 +51,11 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'relative flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200',
+        'flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200',
         collapsed ? 'w-[68px]' : 'w-64',
         className,
       )}
     >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-        className="absolute -right-3 top-[26px] z-10 flex h-6 w-6 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground/70 shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-      >
-        {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
-      </button>
-
       <div className={cn('flex h-16 items-center border-b border-sidebar-border px-4', !collapsed && 'gap-2.5')}>
         <BrandLogo className="h-10 w-10 shrink-0" />
         {!collapsed && (
@@ -115,7 +106,25 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
       </nav>
 
       <div className="border-t border-sidebar-border p-2">
-        <div className={cn('flex items-center gap-2 rounded-md', collapsed && 'justify-center')}>
+        <div className={cn('flex', collapsed ? 'justify-center' : 'justify-end')}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onToggle}
+                aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={collapsed ? 'right' : 'top'}>
+              {collapsed ? 'Expandir menu' : 'Recolher menu'}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className={cn('mt-1 flex items-center gap-2 rounded-md', collapsed && 'justify-center')}>
           <UserMenu collapsed={collapsed}>
             <button className="flex w-full items-center gap-2 rounded-md p-2 text-left outline-none transition-colors hover:bg-accent">
               <UserAvatar name={user?.name ?? '--'} avatarUrl={user?.avatarUrl} />

@@ -42,17 +42,17 @@
     --sidebar-foreground: 222 47% 11%;
     --sidebar-border: 220 13% 91%;
 
-    --radius: 0.6rem;
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222 47% 6%;
+    --background: 224 45% 5%;
     --foreground: 210 20% 96%;
 
-    --card: 220 27% 8%;
+    --card: 222 32% 10%;
     --card-foreground: 210 20% 96%;
 
-    --popover: 220 27% 8%;
+    --popover: 222 32% 10%;
     --popover-foreground: 210 20% 96%;
 
     --primary: 217 91% 60%;
@@ -76,13 +76,13 @@
     --warning: 38 92% 50%;
     --warning-foreground: 222 47% 8%;
 
-    --border: 220 20% 16%;
-    --input: 220 20% 16%;
+    --border: 220 22% 18%;
+    --input: 220 22% 18%;
     --ring: 217 91% 60%;
 
-    --sidebar: 222 47% 5%;
+    --sidebar: 224 45% 4%;
     --sidebar-foreground: 210 20% 90%;
-    --sidebar-border: 220 20% 13%;
+    --sidebar-border: 220 22% 15%;
   }
 }
 

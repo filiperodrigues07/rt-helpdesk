@@ -6,9 +6,11 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ColumnResizeHandle } from '@/components/ui/column-resize-handle';
 import { StatusBadge } from './StatusBadge';
 import { PriorityBadge } from './PriorityBadge';
 import { SlaIndicator } from './SlaIndicator';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { PaginatedResult, TicketListFilters, TicketListItem } from '@/types';
 import { cn } from '@/utils/cn';
 
@@ -19,16 +21,27 @@ interface TicketsTableProps {
   onFiltersChange: (filters: TicketListFilters) => void;
 }
 
-const COLUMNS: { key: TicketListFilters['sortBy']; label: string }[] = [
-  { key: 'number', label: 'Número' },
-  { key: undefined, label: 'Título' },
-  { key: undefined, label: 'Cliente' },
-  { key: undefined, label: 'Responsável' },
-  { key: 'priority', label: 'Prioridade' },
-  { key: undefined, label: 'Status' },
-  { key: 'slaDueAt', label: 'SLA' },
-  { key: 'updatedAt', label: 'Atualização' },
+const COLUMNS: { id: string; key: TicketListFilters['sortBy']; label: string }[] = [
+  { id: 'number', key: 'number', label: 'Número' },
+  { id: 'title', key: undefined, label: 'Título' },
+  { id: 'customer', key: undefined, label: 'Cliente' },
+  { id: 'assignee', key: undefined, label: 'Responsável' },
+  { id: 'priority', key: 'priority', label: 'Prioridade' },
+  { id: 'status', key: undefined, label: 'Status' },
+  { id: 'sla', key: 'slaDueAt', label: 'SLA' },
+  { id: 'updatedAt', key: 'updatedAt', label: 'Atualização' },
 ];
+
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  number: 90,
+  title: 260,
+  customer: 170,
+  assignee: 190,
+  priority: 120,
+  status: 150,
+  sla: 150,
+  updatedAt: 150,
+};
 
 function initials(name: string) {
   return name
@@ -41,6 +54,7 @@ function initials(name: string) {
 
 export function TicketsTable({ data, isLoading, filters, onFiltersChange }: TicketsTableProps) {
   const navigate = useNavigate();
+  const { widths, startResize } = useResizableColumns(DEFAULT_COLUMN_WIDTHS, 'rt-helpdesk:chamados-table-columns');
 
   function toggleSort(key: TicketListFilters['sortBy']) {
     if (!key) return;
@@ -54,11 +68,16 @@ export function TicketsTable({ data, isLoading, filters, onFiltersChange }: Tick
   return (
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            {COLUMNS.map((column) => (
+              <col key={column.id} style={{ width: widths[column.id] }} />
+            ))}
+          </colgroup>
           <thead className="border-b border-border bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>
               {COLUMNS.map((column) => (
-                <th key={column.label} className="whitespace-nowrap px-4 py-2 font-medium">
+                <th key={column.id} className="relative overflow-hidden whitespace-nowrap px-4 py-2 font-medium">
                   {column.key ? (
                     <button
                       className="flex items-center gap-1 hover:text-foreground"
@@ -75,6 +94,7 @@ export function TicketsTable({ data, isLoading, filters, onFiltersChange }: Tick
                   ) : (
                     column.label
                   )}
+                  <ColumnResizeHandle onPointerDown={startResize(column.id)} />
                 </th>
               ))}
             </tr>
@@ -107,39 +127,39 @@ export function TicketsTable({ data, isLoading, filters, onFiltersChange }: Tick
                   )}
                   onClick={() => navigate(`/chamados/${ticket.id}`)}
                 >
-                  <td className="whitespace-nowrap px-4 py-3 font-medium text-muted-foreground">
+                  <td className="overflow-hidden whitespace-nowrap px-4 py-3 font-medium text-muted-foreground">
                     #{ticket.number}
                   </td>
-                  <td className="max-w-xs px-4 py-3">
+                  <td className="overflow-hidden px-4 py-3">
                     <p className="truncate font-medium">{ticket.title}</p>
                   </td>
-                  <td className="max-w-[160px] px-4 py-3">
+                  <td className="overflow-hidden px-4 py-3">
                     <p className="truncate text-muted-foreground">
                       {ticket.customer.tradeName ?? ticket.customer.companyName}
                     </p>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className="overflow-hidden whitespace-nowrap px-4 py-3">
                     {ticket.assignee ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Avatar className="h-6 w-6 shrink-0">
                           <AvatarFallback className="text-[10px]">{initials(ticket.assignee.name)}</AvatarFallback>
                         </Avatar>
-                        <span className="text-muted-foreground">{ticket.assignee.name}</span>
+                        <span className="truncate text-muted-foreground">{ticket.assignee.name}</span>
                       </div>
                     ) : (
                       <span className="text-muted-foreground">Não atribuído</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className="overflow-hidden whitespace-nowrap px-4 py-3">
                     <PriorityBadge priority={ticket.priority} />
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className="overflow-hidden whitespace-nowrap px-4 py-3">
                     <StatusBadge status={ticket.status} />
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className="overflow-hidden whitespace-nowrap px-4 py-3">
                     <SlaIndicator slaDueAt={ticket.slaDueAt} status={ticket.status} />
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                  <td className="overflow-hidden whitespace-nowrap px-4 py-3 text-muted-foreground">
                     {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true, locale: ptBR })}
                   </td>
                 </tr>

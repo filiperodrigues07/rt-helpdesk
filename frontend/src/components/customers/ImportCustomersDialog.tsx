@@ -93,7 +93,7 @@ export function ImportCustomersDialog({ open, onOpenChange }: ImportCustomersDia
         <DialogHeader>
           <DialogTitle>Importar clientes (CSV)</DialogTitle>
           <DialogDescription>
-            Aceita CSV exportado do Excel ou do próprio RT HELPDESK. Colunas reconhecidas: Razão social, Nome
+            Aceita CSV exportado do Excel ou do próprio RT Helpdesk. Colunas reconhecidas: Razão social, Nome
             fantasia, CNPJ, Telefone, E-mail, Cidade, Observações — os nomes podem variar (com ou sem acento).
           </DialogDescription>
         </DialogHeader>

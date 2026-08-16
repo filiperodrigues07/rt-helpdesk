@@ -140,7 +140,7 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar usuário' : 'Novo usuário'}</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Atualize os dados do colaborador.' : 'Cadastre um novo colaborador no RT HELPDESK.'}
+            {isEditing ? 'Atualize os dados do colaborador.' : 'Cadastre um novo colaborador no RT Helpdesk.'}
           </DialogDescription>
         </DialogHeader>
 

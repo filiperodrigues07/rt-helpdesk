@@ -102,7 +102,7 @@ export function CustomerFormPage() {
       <div>
         <h1 className="text-xl font-semibold">{isEditing ? 'Editar cliente' : 'Novo cliente'}</h1>
         <p className="text-sm text-muted-foreground">
-          {isEditing ? 'Atualize os dados cadastrais do cliente.' : 'Cadastre um novo cliente no RT HELPDESK.'}
+          {isEditing ? 'Atualize os dados cadastrais do cliente.' : 'Cadastre um novo cliente no RT Helpdesk.'}
         </p>
       </div>
 

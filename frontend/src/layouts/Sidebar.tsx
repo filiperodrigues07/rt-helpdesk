@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserMenu } from '@/components/UserMenu';
 import { UserAvatar } from '@/components/UserAvatar';
 import { BrandLogo } from '@/components/BrandLogo';
+import { BrandWordmark } from '@/components/BrandWordmark';
 import { hasScreenPermission, SCREEN_PERMISSIONS } from '@/utils/screenPermissions';
 
 const NAV_ITEMS = [
@@ -59,7 +60,7 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
       <div className={cn('flex h-16 items-center border-b border-sidebar-border px-4', !collapsed && 'gap-2.5')}>
         <BrandLogo className="h-10 w-10 shrink-0" />
         {!collapsed && (
-          <span className="truncate text-sm font-semibold tracking-wide">RT HELPDESK</span>
+          <BrandWordmark className="truncate text-sm tracking-tight" secondaryClassName="text-sidebar-foreground/60" />
         )}
       </div>
 

@@ -35,7 +35,7 @@ export function exportReportPdf(summary: ReportSummary, filters: ReportFilters, 
 
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('RT HELPDESK — Relatório de Chamados', marginX, cursorY);
+  doc.text('RT Helpdesk — Relatório de Chamados', marginX, cursorY);
 
   cursorY += 7;
   doc.setFontSize(9);

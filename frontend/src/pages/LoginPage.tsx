@@ -7,8 +7,12 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { BrandLogo } from '@/components/BrandLogo';
+import { BrandWordmark } from '@/components/BrandWordmark';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 export function LoginPage() {
+  useDocumentTitle('Entrar');
+
   const { login, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,7 +66,9 @@ export function LoginPage() {
 
         <div className="relative flex flex-1 flex-col justify-center px-14">
           <BrandLogo className="h-16 w-16" />
-          <h1 className="mt-8 text-3xl font-semibold tracking-tight text-white">RT HELPDESK</h1>
+          <h1 className="mt-8 text-3xl tracking-tight text-white">
+            <BrandWordmark secondaryClassName="text-white/55" />
+          </h1>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/60">
             Central de suporte e implantação — chamados, agenda, clientes e produtividade da equipe em um só lugar.
           </p>
@@ -79,7 +85,9 @@ export function LoginPage() {
         <div className="w-full max-w-sm">
           <div className="mb-10 flex flex-col items-center gap-3 text-center lg:hidden">
             <BrandLogo className="h-12 w-12" />
-            <h1 className="text-lg font-semibold tracking-wide">RT HELPDESK</h1>
+            <h1 className="text-lg tracking-tight">
+              <BrandWordmark secondaryClassName="text-muted-foreground" />
+            </h1>
           </div>
 
           <div className="mb-8">

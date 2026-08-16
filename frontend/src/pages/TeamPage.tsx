@@ -49,7 +49,7 @@ export function TeamPage() {
         <div>
           <h1 className="text-xl font-semibold">Equipe</h1>
           <p className="text-sm text-muted-foreground">
-            Colaboradores cadastrados no RT HELPDESK e produtividade de cada um nos chamados.
+            Colaboradores cadastrados no RT Helpdesk e produtividade de cada um nos chamados.
           </p>
         </div>
         {canManage && (

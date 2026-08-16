@@ -2,11 +2,14 @@ import * as React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { cn } from '@/utils/cn';
 
 const SIDEBAR_STORAGE_KEY = 'rt-helpdesk:sidebar-collapsed';
 
 export function AppLayout() {
+  useDocumentTitle();
+
   const [collapsed, setCollapsed] = React.useState(() => {
     return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
   });

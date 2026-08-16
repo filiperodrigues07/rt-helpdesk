@@ -13,7 +13,7 @@ export function BrandLogo({ className }: BrandLogoProps) {
   return (
     <img
       src={resolveUploadUrl(logoUrl) ?? defaultLogo}
-      alt="RT HELPDESK"
+      alt="RT Helpdesk"
       className={cn('object-contain', className)}
     />
   );

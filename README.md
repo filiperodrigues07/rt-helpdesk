@@ -191,9 +191,11 @@ GET    /api/tickets/board             (todos os chamados, para o Kanban)
 POST   /api/tickets
 GET    /api/tickets/:id
 GET    /api/tickets/:id/conversation (mensagens do cliente e da equipe via TotalChat — só chamados com origem TotalChat)
-PATCH  /api/tickets/:id
-PATCH  /api/tickets/:id/status
-POST   /api/tickets/:id/resolve       (problema/causa raiz/solução — status Resolvido/Encerrado)
+PATCH  /api/tickets/:id               (título/descrição/tags sempre editáveis; prioridade/responsável/categoria só se o chamado não estiver Resolvido/Encerrado)
+PATCH  /api/tickets/:id/status        (só entre os 4 status abertos — rejeita se o chamado já estiver Resolvido/Encerrado)
+POST   /api/tickets/:id/resolve       (problema/causa raiz/solução — sempre move para Resolvido; rejeita se já for Resolvido/Encerrado)
+POST   /api/tickets/:id/close         (Encerrado — só permitido a partir de Resolvido)
+POST   /api/tickets/:id/reopen        (motivo opcional — volta pra Em andamento, recalcula SLA, arquiva a solução anterior no histórico)
 POST   /api/tickets/:id/comments
 POST   /api/tickets/:id/attachments   (multipart/form-data)
 

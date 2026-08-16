@@ -14,6 +14,8 @@ const ACTION_LABELS: Record<string, string> = {
   ANEXO_ADICIONADO: 'anexou um arquivo',
   CHAMADO_RESOLVIDO: 'resolveu o chamado',
   CHAMADO_ENCERRADO: 'encerrou o chamado',
+  CHAMADO_REABERTO: 'reabriu o chamado',
+  SOLUCAO_ARQUIVADA: 'arquivou a solução anterior',
 };
 
 export function TicketTimeline({ items }: { items: TicketHistoryEntry[] }) {
@@ -41,6 +43,9 @@ export function TicketTimeline({ items }: { items: TicketHistoryEntry[] }) {
               )}
               {!item.oldValue && item.newValue && (
                 <span className="text-muted-foreground"> ({item.newValue})</span>
+              )}
+              {item.oldValue && !item.newValue && (
+                <span className="text-muted-foreground"> ({item.oldValue})</span>
               )}
             </p>
             <p className="text-xs text-muted-foreground">

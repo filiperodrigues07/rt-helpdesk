@@ -1,5 +1,6 @@
 import { prisma } from '../utils/prisma';
 
+// Espelha o limite de "at risk" usado no badge por chamado (frontend/src/components/tickets/SlaIndicator.tsx).
 const SLA_RISK_WINDOW_MIN = 4 * 60;
 const PERIOD_DAYS = 14;
 

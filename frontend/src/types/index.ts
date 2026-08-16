@@ -368,11 +368,14 @@ export interface UpdateTicketInput {
 }
 
 export interface ResolveTicketInput {
-  status: 'RESOLVIDO' | 'ENCERRADO';
   resolvedProblem: string;
   rootCause: string;
   appliedSolution: string;
   observations?: string;
+}
+
+export interface ReopenTicketInput {
+  reason?: string;
 }
 
 export interface TicketListFilters {

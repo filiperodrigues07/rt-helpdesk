@@ -17,11 +17,10 @@ interface ResolveTicketDialogProps {
   ticketId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  status: 'RESOLVIDO' | 'ENCERRADO';
   onResolved?: () => void;
 }
 
-export function ResolveTicketDialog({ ticketId, open, onOpenChange, status, onResolved }: ResolveTicketDialogProps) {
+export function ResolveTicketDialog({ ticketId, open, onOpenChange, onResolved }: ResolveTicketDialogProps) {
   const [resolvedProblem, setResolvedProblem] = React.useState('');
   const [rootCause, setRootCause] = React.useState('');
   const [appliedSolution, setAppliedSolution] = React.useState('');
@@ -42,13 +41,12 @@ export function ResolveTicketDialog({ ticketId, open, onOpenChange, status, onRe
     event.preventDefault();
     try {
       await resolveMutation.mutateAsync({
-        status,
         resolvedProblem,
         rootCause,
         appliedSolution,
         observations: observations || undefined,
       });
-      toast({ title: status === 'ENCERRADO' ? 'Chamado encerrado' : 'Chamado resolvido' });
+      toast({ title: 'Chamado resolvido' });
       onOpenChange(false);
       onResolved?.();
     } catch {
@@ -60,10 +58,8 @@ export function ResolveTicketDialog({ ticketId, open, onOpenChange, status, onRe
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{status === 'ENCERRADO' ? 'Encerrar chamado' : 'Resolver chamado'}</DialogTitle>
-          <DialogDescription>
-            Preencha as informações da solução antes de {status === 'ENCERRADO' ? 'encerrar' : 'marcar como resolvido'}.
-          </DialogDescription>
+          <DialogTitle>Resolver chamado</DialogTitle>
+          <DialogDescription>Preencha as informações da solução antes de marcar como resolvido.</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -116,7 +112,7 @@ export function ResolveTicketDialog({ ticketId, open, onOpenChange, status, onRe
             </Button>
             <Button type="submit" disabled={resolveMutation.isPending}>
               {resolveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              {status === 'ENCERRADO' ? 'Encerrar' : 'Resolver'}
+              Resolver
             </Button>
           </div>
         </form>

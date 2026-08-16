@@ -23,3 +23,12 @@ export const PRIORITY_COLORS: Record<TicketPriority, string> = {
   ALTA: '#f59e0b',
   CRITICA: '#ef4444',
 };
+
+export const TERMINAL_STATUSES: TicketStatus[] = ['RESOLVIDO', 'ENCERRADO'];
+
+export const NON_TERMINAL_STATUSES: TicketStatus[] = [
+  'NOVO',
+  'EM_ANDAMENTO',
+  'AGUARDANDO_CLIENTE',
+  'AGUARDANDO_TERCEIRO',
+];

@@ -9,48 +9,64 @@ const RESOLVED_STATUSES = ['RESOLVIDO', 'ENCERRADO'] as const;
 const SLA_WARNING_WINDOW_MIN = 60;
 const AGENDA_WARNING_WINDOW_MIN = 30;
 
+// Chamados sem responsável (todo chamado do TotalChat nasce assim) não têm pra
+// quem notificar diretamente — nesse caso avisamos todos os Administradores/
+// Gerentes, em vez de deixar o alerta de SLA passar batido só porque ainda
+// ninguém pegou o chamado.
+async function getAdminRecipients(): Promise<string[]> {
+  const admins = await prisma.user.findMany({
+    where: { active: true, role: { name: { in: ['ADMINISTRADOR', 'GERENTE'] } } },
+    select: { id: true },
+  });
+  return admins.map((admin) => admin.id);
+}
+
+async function notifyTicketRecipients(
+  ticket: { id: string; number: number; title: string; assigneeId: string | null },
+  type: 'SLA_PROXIMO_VENCIMENTO' | 'SLA_VENCIDO',
+  titlePrefix: string,
+  adminUserIds: string[],
+) {
+  const recipientIds = ticket.assigneeId ? [ticket.assigneeId] : adminUserIds;
+  for (const userId of recipientIds) {
+    await notificationService.notifyOnceForTicket({
+      userId,
+      type,
+      title: `${titlePrefix}: #${ticket.number}`,
+      message: ticket.title,
+      relatedTicketId: ticket.id,
+      relatedUrl: `/chamados/${ticket.id}`,
+    });
+  }
+}
+
 async function checkSlaNotifications() {
   const now = new Date();
   const warningThreshold = new Date(now.getTime() + SLA_WARNING_WINDOW_MIN * 60 * 1000);
+  const adminUserIds = await getAdminRecipients();
 
   const nearingTickets = await prisma.ticket.findMany({
     where: {
       status: { notIn: [...RESOLVED_STATUSES] },
-      assigneeId: { not: null },
       slaDueAt: { gt: now, lte: warningThreshold },
     },
     select: { id: true, number: true, title: true, assigneeId: true },
   });
 
   for (const ticket of nearingTickets) {
-    await notificationService.notifyOnceForTicket({
-      userId: ticket.assigneeId as string,
-      type: 'SLA_PROXIMO_VENCIMENTO',
-      title: `SLA perto de vencer: #${ticket.number}`,
-      message: ticket.title,
-      relatedTicketId: ticket.id,
-      relatedUrl: `/chamados/${ticket.id}`,
-    });
+    await notifyTicketRecipients(ticket, 'SLA_PROXIMO_VENCIMENTO', 'SLA perto de vencer', adminUserIds);
   }
 
   const overdueTickets = await prisma.ticket.findMany({
     where: {
       status: { notIn: [...RESOLVED_STATUSES] },
-      assigneeId: { not: null },
       slaDueAt: { lte: now },
     },
     select: { id: true, number: true, title: true, assigneeId: true },
   });
 
   for (const ticket of overdueTickets) {
-    await notificationService.notifyOnceForTicket({
-      userId: ticket.assigneeId as string,
-      type: 'SLA_VENCIDO',
-      title: `SLA vencido: #${ticket.number}`,
-      message: ticket.title,
-      relatedTicketId: ticket.id,
-      relatedUrl: `/chamados/${ticket.id}`,
-    });
+    await notifyTicketRecipients(ticket, 'SLA_VENCIDO', 'SLA vencido', adminUserIds);
   }
 }
 

@@ -3,6 +3,7 @@ import type {
   ApiSuccess,
   CreateTicketInput,
   PaginatedResult,
+  ReopenTicketInput,
   ResolveTicketInput,
   TicketComment,
   TicketDetail,
@@ -62,6 +63,16 @@ export const ticketService = {
 
   async resolve(id: string, input: ResolveTicketInput) {
     const { data } = await api.post<ApiSuccess<TicketDetail>>(`/tickets/${id}/resolve`, input);
+    return data.data;
+  },
+
+  async close(id: string) {
+    const { data } = await api.post<ApiSuccess<TicketDetail>>(`/tickets/${id}/close`, {});
+    return data.data;
+  },
+
+  async reopen(id: string, input: ReopenTicketInput) {
+    const { data } = await api.post<ApiSuccess<TicketDetail>>(`/tickets/${id}/reopen`, input);
     return data.data;
   },
 

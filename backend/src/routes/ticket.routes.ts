@@ -17,5 +17,7 @@ ticketRoutes.get('/:id/conversation', asyncHandler(ticketController.getConversat
 ticketRoutes.patch('/:id', asyncHandler(ticketController.update));
 ticketRoutes.patch('/:id/status', asyncHandler(ticketController.updateStatus));
 ticketRoutes.post('/:id/resolve', asyncHandler(ticketController.resolve));
+ticketRoutes.post('/:id/close', asyncHandler(ticketController.close));
+ticketRoutes.post('/:id/reopen', asyncHandler(ticketController.reopen));
 ticketRoutes.post('/:id/comments', asyncHandler(ticketController.addComment));
 ticketRoutes.post('/:id/attachments', uploadTicketAttachment, asyncHandler(ticketController.addAttachment));

@@ -62,11 +62,14 @@ const statusSchema = z.object({
 });
 
 const resolveSchema = z.object({
-  status: z.enum(['RESOLVIDO', 'ENCERRADO']),
   resolvedProblem: z.string().trim().min(1, 'Descreva o problema identificado'),
   rootCause: z.string().trim().min(1, 'Descreva a causa raiz'),
   appliedSolution: z.string().trim().min(1, 'Descreva a solução aplicada'),
   observations: z.string().trim().optional(),
+});
+
+const reopenSchema = z.object({
+  reason: z.string().trim().min(1).optional(),
 });
 
 const commentSchema = z.object({
@@ -128,11 +131,20 @@ export const ticketController = {
   async resolve(req: Request, res: Response) {
     const user = requireUser(req);
     const input = resolveSchema.parse(req.body);
-    const ticket = await ticketService.resolve(
-      req.params.id,
-      input as typeof input & { status: 'RESOLVIDO' | 'ENCERRADO' },
-      user.id,
-    );
+    const ticket = await ticketService.resolve(req.params.id, input, user.id);
+    return ok(res, ticket);
+  },
+
+  async close(req: Request, res: Response) {
+    const user = requireUser(req);
+    const ticket = await ticketService.close(req.params.id, user.id);
+    return ok(res, ticket);
+  },
+
+  async reopen(req: Request, res: Response) {
+    const user = requireUser(req);
+    const { reason } = reopenSchema.parse(req.body);
+    const ticket = await ticketService.reopen(req.params.id, reason, user.id);
     return ok(res, ticket);
   },
 

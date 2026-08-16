@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ticketService } from '@/services/ticketService';
-import type { CreateTicketInput, ResolveTicketInput, TicketStatus, UpdateTicketInput } from '@/types';
+import type {
+  CreateTicketInput,
+  ReopenTicketInput,
+  ResolveTicketInput,
+  TicketStatus,
+  UpdateTicketInput,
+} from '@/types';
 
 export function useCreateTicket() {
   const queryClient = useQueryClient();
@@ -38,6 +44,28 @@ export function useResolveTicket(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ResolveTicketInput) => ticketService.resolve(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}
+
+export function useCloseTicket(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => ticketService.close(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}
+
+export function useReopenTicket(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ReopenTicketInput) => ticketService.reopen(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });

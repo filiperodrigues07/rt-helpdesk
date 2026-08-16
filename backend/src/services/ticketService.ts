@@ -64,7 +64,6 @@ interface UpdateTicketInput {
 }
 
 interface ResolveTicketInput {
-  status: 'RESOLVIDO' | 'ENCERRADO';
   resolvedProblem: string;
   rootCause: string;
   appliedSolution: string;
@@ -167,6 +166,16 @@ export const ticketService = {
   async update(id: string, input: UpdateTicketInput, actorId: string) {
     const current = await this.getById(id);
 
+    if (
+      RESOLVED_STATUSES.includes(current.status) &&
+      (input.priority !== undefined || input.assigneeId !== undefined || input.categoryId !== undefined)
+    ) {
+      throw new AppError(
+        'Este chamado está resolvido ou encerrado. Reabra o chamado para alterar prioridade, responsável ou categoria.',
+        400,
+      );
+    }
+
     const historyEntries: Parameters<typeof ticketRepository.recordHistory>[0][] = [];
 
     if (input.priority && input.priority !== current.priority) {
@@ -267,6 +276,13 @@ export const ticketService = {
   async updateStatus(id: string, status: TicketStatus, actorId: string) {
     const current = await this.getById(id);
 
+    if (RESOLVED_STATUSES.includes(current.status)) {
+      throw new AppError(
+        'Este chamado está resolvido ou encerrado. Use "Reabrir chamado" para retomar o atendimento.',
+        400,
+      );
+    }
+
     if (RESOLVED_STATUSES.includes(status)) {
       throw new AppError(
         'Para resolver ou encerrar um chamado, use o formulário de solução com problema, causa raiz e solução aplicada.',
@@ -305,28 +321,141 @@ export const ticketService = {
 
   async resolve(id: string, input: ResolveTicketInput, actorId: string) {
     const current = await this.getById(id);
-    const resolvedAt = new Date();
 
+    if (RESOLVED_STATUSES.includes(current.status)) {
+      throw new AppError('Este chamado já está resolvido ou encerrado.', 400);
+    }
+
+    const resolvedAt = new Date();
     const ticket = await ticketRepository.update(id, {
-      status: input.status,
+      status: 'RESOLVIDO',
       resolvedProblem: input.resolvedProblem,
       rootCause: input.rootCause,
       appliedSolution: input.appliedSolution,
       observations: input.observations,
       resolvedAt,
-      closedAt: input.status === 'ENCERRADO' ? resolvedAt : null,
+      closedAt: null,
     });
 
     await ticketRepository.recordHistory({
       ticketId: id,
       authorId: actorId,
-      action: input.status === 'ENCERRADO' ? 'CHAMADO_ENCERRADO' : 'CHAMADO_RESOLVIDO',
+      action: 'CHAMADO_RESOLVIDO',
       fieldName: 'status',
       oldValue: STATUS_LABELS[current.status],
-      newValue: STATUS_LABELS[input.status],
+      newValue: STATUS_LABELS.RESOLVIDO,
     });
 
+    await this.notifyTicketParties(current, ticket, actorId, `Chamado resolvido: #${ticket.number}`);
     return ticket;
+  },
+
+  async close(id: string, actorId: string) {
+    const current = await this.getById(id);
+
+    if (current.status !== 'RESOLVIDO') {
+      throw new AppError('Encerrar só é permitido depois que o chamado estiver Resolvido.', 400);
+    }
+
+    const closedAt = new Date();
+    const ticket = await ticketRepository.update(id, { status: 'ENCERRADO', closedAt });
+
+    await ticketRepository.recordHistory({
+      ticketId: id,
+      authorId: actorId,
+      action: 'CHAMADO_ENCERRADO',
+      fieldName: 'status',
+      oldValue: STATUS_LABELS.RESOLVIDO,
+      newValue: STATUS_LABELS.ENCERRADO,
+    });
+
+    await this.notifyTicketParties(current, ticket, actorId, `Chamado encerrado: #${ticket.number}`);
+    return ticket;
+  },
+
+  async reopen(id: string, reason: string | undefined, actorId: string) {
+    const current = await this.getById(id);
+
+    if (!RESOLVED_STATUSES.includes(current.status)) {
+      throw new AppError('Apenas chamados resolvidos ou encerrados podem ser reabertos.', 400);
+    }
+
+    const slaRule = await ticketRepository.findSlaRuleByPriority(current.priority);
+    const reopenedAt = new Date();
+    const slaDueAt = slaRule ? new Date(reopenedAt.getTime() + slaRule.responseTimeMin * 60 * 1000) : null;
+
+    const ticket = await ticketRepository.update(id, {
+      status: 'EM_ANDAMENTO',
+      resolvedProblem: null,
+      rootCause: null,
+      appliedSolution: null,
+      observations: null,
+      resolvedAt: null,
+      closedAt: null,
+      slaRule: slaRule ? { connect: { id: slaRule.id } } : { disconnect: true },
+      slaDueAt,
+    });
+
+    await ticketRepository.recordHistory({
+      ticketId: id,
+      authorId: actorId,
+      action: 'CHAMADO_REABERTO',
+      fieldName: 'status',
+      oldValue: STATUS_LABELS[current.status],
+      newValue: STATUS_LABELS.EM_ANDAMENTO,
+    });
+
+    if (current.resolvedProblem || current.rootCause || current.appliedSolution) {
+      await ticketRepository.recordHistory({
+        ticketId: id,
+        authorId: actorId,
+        action: 'SOLUCAO_ARQUIVADA',
+        fieldName: 'resolucao',
+        oldValue: [
+          current.resolvedProblem ? `Problema: ${current.resolvedProblem}` : null,
+          current.rootCause ? `Causa raiz: ${current.rootCause}` : null,
+          current.appliedSolution ? `Solução: ${current.appliedSolution}` : null,
+          current.observations ? `Observações: ${current.observations}` : null,
+        ]
+          .filter(Boolean)
+          .join(' | '),
+      });
+    }
+
+    if (reason) {
+      await ticketRepository.recordHistory({
+        ticketId: id,
+        authorId: actorId,
+        action: 'CHAMADO_REABERTO',
+        fieldName: 'motivo',
+        newValue: reason,
+      });
+    }
+
+    await this.notifyTicketParties(current, ticket, actorId, `Chamado reaberto: #${ticket.number}`);
+    return ticket;
+  },
+
+  async notifyTicketParties(
+    before: { assigneeId: string | null; creatorId: string | null },
+    ticket: { id: string; number: number; title: string },
+    actorId: string,
+    title: string,
+  ) {
+    const recipients = new Set<string>();
+    if (before.assigneeId && before.assigneeId !== actorId) recipients.add(before.assigneeId);
+    if (before.creatorId && before.creatorId !== actorId) recipients.add(before.creatorId);
+
+    for (const userId of recipients) {
+      await notificationService.notify({
+        userId,
+        type: 'CHAMADO_ATUALIZADO',
+        title,
+        message: ticket.title,
+        relatedTicketId: ticket.id,
+        relatedUrl: `/chamados/${ticket.id}`,
+      });
+    }
   },
 
   async addComment(ticketId: string, authorId: string, content: string) {

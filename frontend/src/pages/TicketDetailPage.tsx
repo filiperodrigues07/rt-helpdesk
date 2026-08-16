@@ -18,22 +18,17 @@ import { TicketComments } from '@/components/tickets/TicketComments';
 import { TicketConversation } from '@/components/tickets/TicketConversation';
 import { TicketAttachments } from '@/components/tickets/TicketAttachments';
 import { TicketKnowledgeBase } from '@/components/tickets/TicketKnowledgeBase';
-import { ResolveTicketDialog } from '@/components/tickets/ResolveTicketDialog';
+import { TicketStatusControl } from '@/components/tickets/TicketStatusControl';
 import { useTicket } from '@/hooks/useTicket';
-import { useUpdateTicket, useUpdateTicketStatus } from '@/hooks/useTicketMutations';
+import { useUpdateTicket } from '@/hooks/useTicketMutations';
 import { useCategories } from '@/hooks/useCategories';
 import { userService } from '@/services/userService';
 import { toast } from '@/hooks/use-toast';
-import { PRIORITY_LABELS, STATUS_LABELS } from '@/utils/ticketLabels';
-import type { TicketPriority, TicketStatus } from '@/types';
+import { PRIORITY_LABELS, TERMINAL_STATUSES } from '@/utils/ticketLabels';
+import type { TicketPriority } from '@/types';
 
-const NON_TERMINAL_STATUSES: TicketStatus[] = [
-  'NOVO',
-  'EM_ANDAMENTO',
-  'AGUARDANDO_CLIENTE',
-  'AGUARDANDO_TERCEIRO',
-];
 const NONE = '__none__';
+const TIMELINE_PREVIEW_COUNT = 3;
 
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -43,10 +38,8 @@ export function TicketDetailPage() {
   const { data: users } = useQuery({ queryKey: ['users'], queryFn: userService.list });
 
   const updateTicket = useUpdateTicket(id ?? '');
-  const updateStatus = useUpdateTicketStatus();
 
-  const [resolveOpen, setResolveOpen] = React.useState(false);
-  const [resolveStatus, setResolveStatus] = React.useState<'RESOLVIDO' | 'ENCERRADO'>('RESOLVIDO');
+  const [showFullTimeline, setShowFullTimeline] = React.useState(false);
 
   if (isLoading || !ticket) {
     return (
@@ -57,19 +50,6 @@ export function TicketDetailPage() {
           <Skeleton className="h-96" />
         </div>
       </div>
-    );
-  }
-
-  function handleStatusChange(value: string) {
-    if (!id) return;
-    if (value === 'RESOLVIDO' || value === 'ENCERRADO') {
-      setResolveStatus(value);
-      setResolveOpen(true);
-      return;
-    }
-    updateStatus.mutate(
-      { id, status: value as TicketStatus },
-      { onError: () => toast({ variant: 'destructive', title: 'Erro ao alterar status' }) },
     );
   }
 
@@ -94,7 +74,8 @@ export function TicketDetailPage() {
     );
   }
 
-  const isResolved = ticket.status === 'RESOLVIDO' || ticket.status === 'ENCERRADO';
+  const isTerminal = TERMINAL_STATUSES.includes(ticket.status);
+  const visibleHistory = showFullTimeline ? ticket.history : ticket.history.slice(0, TIMELINE_PREVIEW_COUNT);
 
   return (
     <div className="space-y-4">
@@ -143,7 +124,7 @@ export function TicketDetailPage() {
             </Card>
           )}
 
-          {isResolved && (ticket.resolvedProblem || ticket.rootCause || ticket.appliedSolution) && (
+          {isTerminal && (ticket.resolvedProblem || ticket.rootCause || ticket.appliedSolution) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-foreground">Solução</CardTitle>
@@ -185,12 +166,32 @@ export function TicketDetailPage() {
               <CardTitle className="text-foreground">Timeline</CardTitle>
             </CardHeader>
             <CardContent>
-              <TicketTimeline items={ticket.history} />
+              <TicketTimeline items={visibleHistory} />
+              {ticket.history.length > TIMELINE_PREVIEW_COUNT && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => setShowFullTimeline((prev) => !prev)}
+                >
+                  {showFullTimeline ? 'Ver menos' : 'Ver histórico completo'}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-foreground">Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TicketStatusControl ticket={ticket} />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-foreground">Detalhes</CardTitle>
@@ -204,26 +205,8 @@ export function TicketDetailPage() {
               <Separator />
 
               <div>
-                <p className="mb-1 text-xs font-medium text-muted-foreground">Status</p>
-                <Select value={isResolved ? ticket.status : ticket.status} onValueChange={handleStatusChange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NON_TERMINAL_STATUSES.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {STATUS_LABELS[status]}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="RESOLVIDO">Resolver...</SelectItem>
-                    <SelectItem value="ENCERRADO">Encerrar...</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
                 <p className="mb-1 text-xs font-medium text-muted-foreground">Prioridade</p>
-                <Select value={ticket.priority} onValueChange={handlePriorityChange}>
+                <Select value={ticket.priority} onValueChange={handlePriorityChange} disabled={isTerminal}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -239,7 +222,7 @@ export function TicketDetailPage() {
 
               <div>
                 <p className="mb-1 text-xs font-medium text-muted-foreground">Responsável</p>
-                <Select value={ticket.assignee?.id ?? NONE} onValueChange={handleAssigneeChange}>
+                <Select value={ticket.assignee?.id ?? NONE} onValueChange={handleAssigneeChange} disabled={isTerminal}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -256,7 +239,7 @@ export function TicketDetailPage() {
 
               <div>
                 <p className="mb-1 text-xs font-medium text-muted-foreground">Categoria</p>
-                <Select value={ticket.category?.id ?? NONE} onValueChange={handleCategoryChange}>
+                <Select value={ticket.category?.id ?? NONE} onValueChange={handleCategoryChange} disabled={isTerminal}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -283,9 +266,9 @@ export function TicketDetailPage() {
                 <p className="text-sm">{format(new Date(ticket.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
               </div>
 
-              {ticket.origin === 'TOTALCHAT' && (
-                <Badge variant="secondary">Origem: TotalChat</Badge>
-              )}
+              <Badge variant="secondary">
+                Origem: {ticket.origin === 'TOTALCHAT' ? 'TotalChat' : 'Manual'}
+              </Badge>
             </CardContent>
           </Card>
 
@@ -300,20 +283,11 @@ export function TicketDetailPage() {
 
           <Card>
             <CardContent className="p-4">
-              <TicketKnowledgeBase query={ticket.title} />
+              <TicketKnowledgeBase query={ticket.description} />
             </CardContent>
           </Card>
         </div>
       </div>
-
-      {id && (
-        <ResolveTicketDialog
-          ticketId={id}
-          open={resolveOpen}
-          onOpenChange={setResolveOpen}
-          status={resolveStatus}
-        />
-      )}
     </div>
   );
 }

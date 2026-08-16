@@ -2,6 +2,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/utils/cn';
 import type { TicketStatus } from '@/types';
+import { TERMINAL_STATUSES } from '@/utils/ticketLabels';
 
 interface SlaIndicatorProps {
   slaDueAt: string | null;
@@ -9,10 +10,11 @@ interface SlaIndicatorProps {
   className?: string;
 }
 
-const FINISHED_STATUSES: TicketStatus[] = ['RESOLVIDO', 'ENCERRADO'];
+// Espelha SLA_RISK_WINDOW_MIN em backend/src/services/dashboardService.ts (badge "at risk" no dashboard).
+const AT_RISK_WINDOW_MIN = 240;
 
 export function SlaIndicator({ slaDueAt, status, className }: SlaIndicatorProps) {
-  if (FINISHED_STATUSES.includes(status)) {
+  if (TERMINAL_STATUSES.includes(status)) {
     return <span className={cn('text-xs text-muted-foreground', className)}>Finalizado</span>;
   }
 
@@ -24,7 +26,7 @@ export function SlaIndicator({ slaDueAt, status, className }: SlaIndicatorProps)
   const now = new Date();
   const diffMs = due.getTime() - now.getTime();
   const isOverdue = diffMs < 0;
-  const isAtRisk = !isOverdue && diffMs < 4 * 60 * 60 * 1000;
+  const isAtRisk = !isOverdue && diffMs < AT_RISK_WINDOW_MIN * 60 * 1000;
 
   const distance = formatDistanceToNowStrict(due, { locale: ptBR });
 

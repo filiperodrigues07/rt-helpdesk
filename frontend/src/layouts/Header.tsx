@@ -93,20 +93,25 @@ export function Header({ onMenuClick }: HeaderProps) {
         <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuClick}>
           <Menu className="h-4 w-4" />
         </Button>
-        <nav className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
-          {breadcrumb.map((crumb, index) => (
-            <React.Fragment key={crumb.to}>
-              {index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-              {index === breadcrumb.length - 1 ? (
-                <span className="truncate font-medium text-foreground">{crumb.label}</span>
-              ) : (
-                <Link to={crumb.to} className="truncate hover:text-foreground">
-                  {crumb.label}
-                </Link>
-              )}
-            </React.Fragment>
-          ))}
-        </nav>
+        {/* Só mostra o caminho quando há navegação aninhada de verdade (ex.: Chamados > Editar) —
+            na página raiz de cada seção o título já aparece no conteúdo, então repetir aqui
+            (ex.: "Dashboard" no header logo acima do "Dashboard" da página) é redundante. */}
+        {breadcrumb.length > 1 && (
+          <nav className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+            {breadcrumb.map((crumb, index) => (
+              <React.Fragment key={crumb.to}>
+                {index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                {index === breadcrumb.length - 1 ? (
+                  <span className="truncate font-medium text-foreground">{crumb.label}</span>
+                ) : (
+                  <Link to={crumb.to} className="truncate hover:text-foreground">
+                    {crumb.label}
+                  </Link>
+                )}
+              </React.Fragment>
+            ))}
+          </nav>
+        )}
       </div>
 
       <div className="flex items-center gap-2">

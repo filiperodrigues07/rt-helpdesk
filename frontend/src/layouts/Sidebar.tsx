@@ -12,7 +12,6 @@ import {
   ChevronsRight,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
@@ -52,13 +51,22 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200',
+        'relative flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200',
         collapsed ? 'w-[68px]' : 'w-64',
         className,
       )}
     >
-      <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4">
-        <BrandLogo className="h-8 w-8 shrink-0" />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+        className="absolute -right-3 top-[26px] z-10 flex h-6 w-6 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground/70 shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
+      </button>
+
+      <div className={cn('flex h-16 items-center border-b border-sidebar-border px-4', !collapsed && 'gap-2.5')}>
+        <BrandLogo className="h-10 w-10 shrink-0" />
         {!collapsed && (
           <span className="truncate text-sm font-semibold tracking-wide">RT HELPDESK</span>
         )}
@@ -107,19 +115,7 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
       </nav>
 
       <div className="border-t border-sidebar-border p-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggle}
-          className={cn('mb-2 w-full justify-center text-sidebar-foreground/70')}
-        >
-          {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
-          {!collapsed && <span className="ml-2">Recolher</span>}
-        </Button>
-
-        <Separator />
-
-        <div className={cn('mt-2 flex items-center gap-2 rounded-md', collapsed && 'justify-center')}>
+        <div className={cn('flex items-center gap-2 rounded-md', collapsed && 'justify-center')}>
           <UserMenu collapsed={collapsed}>
             <button className="flex w-full items-center gap-2 rounded-md p-2 text-left outline-none transition-colors hover:bg-accent">
               <UserAvatar name={user?.name ?? '--'} avatarUrl={user?.avatarUrl} />
@@ -135,8 +131,4 @@ export function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
       </div>
     </aside>
   );
-}
-
-function Separator() {
-  return <div className="h-px w-full bg-sidebar-border" />;
 }

@@ -36,7 +36,7 @@ export function KnowledgeBasePage() {
   const { data, isLoading } = useKnowledgeBaseArticles(search);
   const deleteArticle = useDeleteArticle();
   const duplicateArticle = useDuplicateArticle();
-  const [viewMode, setViewMode] = useViewMode();
+  const [viewMode, setViewMode] = useViewMode('rt-helpdesk:kb-view-mode');
 
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = React.useState<string | null>(null);

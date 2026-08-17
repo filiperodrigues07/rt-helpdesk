@@ -1,23 +1,21 @@
 import * as React from 'react';
 
-const STORAGE_KEY = 'rt-helpdesk:kb-view-mode';
+export type ViewMode = 'grid' | 'list';
 
-export type KnowledgeBaseViewMode = 'grid' | 'list';
-
-export function useViewMode(defaultMode: KnowledgeBaseViewMode = 'grid') {
-  const [mode, setMode] = React.useState<KnowledgeBaseViewMode>(() => {
+export function useViewMode(storageKey: string, defaultMode: ViewMode = 'grid') {
+  const [mode, setMode] = React.useState<ViewMode>(() => {
     try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
+      const stored = window.localStorage.getItem(storageKey);
       return stored === 'grid' || stored === 'list' ? stored : defaultMode;
     } catch {
       return defaultMode;
     }
   });
 
-  function setAndPersist(next: KnowledgeBaseViewMode) {
+  function setAndPersist(next: ViewMode) {
     setMode(next);
     try {
-      window.localStorage.setItem(STORAGE_KEY, next);
+      window.localStorage.setItem(storageKey, next);
     } catch {
       // ignore
     }

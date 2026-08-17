@@ -183,6 +183,44 @@ export async function fetchConversationMessages(clienteId: number): Promise<Tota
   return [...byId.values()].sort((a, b) => a.d - b.d);
 }
 
+async function fetchConversationMessagesByPhone(telefone: string): Promise<TotalChatMensagem[]> {
+  const byId = new Map<number, TotalChatMensagem>();
+
+  for (let pag = 0; pag < MAX_CONVERSATION_PAGES; pag++) {
+    if (pag > 0) await delay(REQUEST_THROTTLE_MS);
+    const page = await totalChatClient.getMensagensTelefone(telefone, pag);
+    if (page.length === 0) break;
+    for (const message of page) byId.set(message.d, message);
+    if (page.length < 70) break;
+  }
+
+  return [...byId.values()].sort((a, b) => a.d - b.d);
+}
+
+async function formatConversation(messages: TotalChatMensagem[]) {
+  const attendantIds = [...new Set(messages.map((m) => m.aid).filter((aid): aid is number => !!aid))];
+  const attendants = attendantIds.length
+    ? await prisma.user.findMany({
+        where: { totalchatAttendantId: { in: attendantIds.map(String) } },
+        select: { totalchatAttendantId: true, name: true },
+      })
+    : [];
+  const attendantNameById = new Map(attendants.map((a) => [a.totalchatAttendantId, a.name]));
+
+  return messages.map((message) => ({
+    id: message.d,
+    direction: message.s === 0 ? ('cliente' as const) : ('equipe' as const),
+    senderName:
+      message.s === 0
+        ? message.f || 'Cliente'
+        : (message.aid && attendantNameById.get(String(message.aid))) || message.f || 'Equipe',
+    text: message.m || '',
+    mediaType: message.tipo ? (MEDIA_TYPE_LABELS[message.tipo] ?? null) : null,
+    mediaUrl: resolveMediaUrl(message.img || message.arqu),
+    timestamp: parseTotalChatDate(message.h),
+  }));
+}
+
 // nome do atendente (como aparece em `f` nas mensagens) -> id do atendente,
 // pela lista oficial (listaUsuarios). Construído uma vez por sync/backfill e
 // reaproveitado pra cada contato, pra não bater na API de atendentes toda hora.
@@ -354,28 +392,12 @@ async function requireCloudApiFid(): Promise<number> {
 export const totalChatService = {
   async getConversation(clienteId: number) {
     const messages = await fetchConversationMessages(clienteId);
+    return formatConversation(messages);
+  },
 
-    const attendantIds = [...new Set(messages.map((m) => m.aid).filter((aid): aid is number => !!aid))];
-    const attendants = attendantIds.length
-      ? await prisma.user.findMany({
-          where: { totalchatAttendantId: { in: attendantIds.map(String) } },
-          select: { totalchatAttendantId: true, name: true },
-        })
-      : [];
-    const attendantNameById = new Map(attendants.map((a) => [a.totalchatAttendantId, a.name]));
-
-    return messages.map((message) => ({
-      id: message.d,
-      direction: message.s === 0 ? ('cliente' as const) : ('equipe' as const),
-      senderName:
-        message.s === 0
-          ? message.f || 'Cliente'
-          : (message.aid && attendantNameById.get(String(message.aid))) || message.f || 'Equipe',
-      text: message.m || '',
-      mediaType: message.tipo ? (MEDIA_TYPE_LABELS[message.tipo] ?? null) : null,
-      mediaUrl: resolveMediaUrl(message.img || message.arqu),
-      timestamp: parseTotalChatDate(message.h),
-    }));
+  async getConversationByPhone(telefone: string) {
+    const messages = await fetchConversationMessagesByPhone(telefone);
+    return formatConversation(messages);
   },
 
   async getIntegrationStatus() {
@@ -461,7 +483,7 @@ export const totalChatService = {
   async sendFreeformMessage(
     recipient: { clienteId?: number; telefone?: string },
     input: { text?: string; files: { buffer: Buffer; fileName: string; mimeType: string }[] },
-  ) {
+  ): Promise<{ clienteId?: number }> {
     // Enviar por telefone (sem clienteId ainda cadastrado no TotalChat) exige
     // informar por qual conexão (número de WhatsApp) a mensagem deve sair.
     const conexaoId = !recipient.clienteId && recipient.telefone ? await resolveConnectionId() : undefined;
@@ -471,15 +493,18 @@ export const totalChatService = {
       if (!input.text?.trim()) throw new AppError('Escreva uma mensagem ou anexe um arquivo', 400);
       const response = await totalChatClient.enviaMensagem({ ...target, mensagem: input.text });
       if (!response.sucesso) throw new AppError(response.message || 'Falha ao enviar mensagem pelo WhatsApp', 502);
-      return;
+      return { clienteId: response.i };
     }
 
+    let clienteId: number | undefined;
     for (const [index, file] of input.files.entries()) {
       const caption = index === 0 ? input.text : undefined;
       const send = file.mimeType.startsWith('image/') ? totalChatClient.enviaImagem : totalChatClient.enviaDocumento;
       const response = await send({ ...target, mensagem: caption }, file);
       if (!response.sucesso) throw new AppError(response.message || 'Falha ao enviar arquivo pelo WhatsApp', 502);
+      clienteId = clienteId ?? response.i;
     }
+    return { clienteId };
   },
 
   async sendWhatsAppTemplate(

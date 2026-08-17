@@ -46,6 +46,24 @@ async function findMentionedUsers(content: string, authorId: string) {
   return [...matched.values()];
 }
 
+type WhatsAppSendTarget = { clienteId: number } | { telefone: string };
+
+/** Resolve pra quem enviar WhatsApp: contato com id conhecido do TotalChat > telefone de contato > telefone do cliente. */
+function resolveCustomerWhatsAppTarget(customer: {
+  phone: string | null;
+  contacts: { totalchatContactId: string | null; phone: string | null }[];
+}): WhatsAppSendTarget | null {
+  const contactWithTotalChatId = customer.contacts.find((contact) => contact.totalchatContactId);
+  if (contactWithTotalChatId) return { clienteId: Number(contactWithTotalChatId.totalchatContactId) };
+
+  const contactWithPhone = customer.contacts.find((contact) => contact.phone);
+  if (contactWithPhone) return { telefone: contactWithPhone.phone as string };
+
+  if (customer.phone) return { telefone: customer.phone };
+
+  return null;
+}
+
 interface CreateTicketInput {
   title: string;
   description: string;
@@ -100,18 +118,47 @@ export const ticketService = {
     return ticket;
   },
 
-  async assertTotalChatTicket(id: string) {
+  /** Exige um contato do TotalChat já vinculado (usado por operações que só existem via clienteId, como templates). */
+  async requireKnownContact(id: string) {
     const ticket = await this.getById(id);
-    if (ticket.origin !== 'TOTALCHAT' || !ticket.totalchatContactId) {
-      throw new AppError('Este chamado não tem uma conversa do TotalChat vinculada', 400);
+    if (!ticket.totalchatContactId) {
+      throw new AppError('Envie uma mensagem de texto primeiro para iniciar a conversa com este cliente.', 400);
     }
     return ticket;
   },
 
-  async getConversation(id: string) {
-    const ticket = await this.assertTotalChatTicket(id);
+  /**
+   * Resolve o destinatário da conversa: usa o contato já vinculado ao chamado
+   * quando existe; senão tenta resolver pelo cliente (contato com id do
+   * TotalChat conhecido, ou telefone). Quando já dá pra saber o clienteId
+   * (contato de uma conversa anterior), vincula o chamado imediatamente.
+   */
+  async resolveConversationTarget(id: string) {
+    const ticket = await this.getById(id);
+    if (ticket.totalchatContactId) {
+      return { ticket, target: { clienteId: Number(ticket.totalchatContactId) } as WhatsAppSendTarget };
+    }
 
-    const messages = await totalChatService.getConversation(Number(ticket.totalchatContactId));
+    const customer = await customerRepository.findById(ticket.customerId);
+    const target = customer ? resolveCustomerWhatsAppTarget(customer) : null;
+    if (!target) {
+      throw new AppError('Este cliente não tem WhatsApp cadastrado.', 400);
+    }
+
+    if ('clienteId' in target) {
+      await ticketRepository.update(id, { totalchatContactId: String(target.clienteId) });
+    }
+
+    return { ticket, target };
+  },
+
+  async getConversation(id: string) {
+    const { ticket, target } = await this.resolveConversationTarget(id);
+
+    const messages =
+      'clienteId' in target
+        ? await totalChatService.getConversation(target.clienteId)
+        : await totalChatService.getConversationByPhone(target.telefone);
 
     // GetMensagens devolve o histórico inteiro do contato no TotalChat (pode ter
     // anos e milhares de mensagens de outros atendimentos) — não é escopado por
@@ -127,12 +174,13 @@ export const ticketService = {
     actorId: string,
     input: { content?: string; files: { buffer: Buffer; fileName: string; mimeType: string }[] },
   ) {
-    const ticket = await this.assertTotalChatTicket(id);
+    const { target } = await this.resolveConversationTarget(id);
 
-    await totalChatService.sendFreeformMessage(
-      { clienteId: Number(ticket.totalchatContactId) },
-      { text: input.content, files: input.files },
-    );
+    const result = await totalChatService.sendFreeformMessage(target, { text: input.content, files: input.files });
+
+    if ('telefone' in target && result.clienteId) {
+      await ticketRepository.update(id, { totalchatContactId: String(result.clienteId) });
+    }
 
     await ticketRepository.recordHistory({
       ticketId: id,
@@ -143,17 +191,17 @@ export const ticketService = {
   },
 
   async listWhatsAppTemplates(id: string, after?: string) {
-    await this.assertTotalChatTicket(id);
+    await this.requireKnownContact(id);
     return totalChatService.listWhatsAppTemplates(after);
   },
 
   async getWhatsAppTemplate(id: string, templateId: string) {
-    await this.assertTotalChatTicket(id);
+    await this.requireKnownContact(id);
     return totalChatService.getWhatsAppTemplate(templateId);
   },
 
   async uploadTemplateHeaderImage(id: string, relativePath: string) {
-    await this.assertTotalChatTicket(id);
+    await this.requireKnownContact(id);
     if (!env.appPublicUrl) {
       throw new AppError(
         'APP_PUBLIC_URL não está configurada — imagem de cabeçalho de template exige uma URL pública.',
@@ -168,7 +216,7 @@ export const ticketService = {
     actorId: string,
     input: { templateName: string; language: string; components: TotalChatSendTemplateComponent[] },
   ) {
-    const ticket = await this.assertTotalChatTicket(id);
+    const ticket = await this.requireKnownContact(id);
     await totalChatService.sendWhatsAppTemplate(Number(ticket.totalchatContactId), input);
 
     await ticketRepository.recordHistory({
@@ -240,23 +288,16 @@ export const ticketService = {
     actorId: string,
   ) {
     const customer = await customerRepository.findById(ticket.customerId);
-    if (!customer) return;
-
-    const contactWithTotalChatId = customer.contacts.find((contact) => contact.totalchatContactId);
-    const contactWithPhone = customer.contacts.find((contact) => contact.phone);
-
-    const recipient = contactWithTotalChatId
-      ? { clienteId: Number(contactWithTotalChatId.totalchatContactId) }
-      : contactWithPhone
-        ? { telefone: contactWithPhone.phone as string }
-        : customer.phone
-          ? { telefone: customer.phone }
-          : null;
-
-    if (!recipient) return;
+    const target = customer ? resolveCustomerWhatsAppTarget(customer) : null;
+    if (!target) return;
 
     const message = `Olá! Seu chamado #${ticket.number} foi registrado: "${ticket.title}". Em breve nossa equipe vai te atender.`;
-    await totalChatService.sendFreeformMessage(recipient, { text: message, files: [] });
+    const result = await totalChatService.sendFreeformMessage(target, { text: message, files: [] });
+
+    const clienteId = 'clienteId' in target ? target.clienteId : result.clienteId;
+    if (clienteId) {
+      await ticketRepository.update(ticket.id, { totalchatContactId: String(clienteId) });
+    }
 
     await ticketRepository.recordHistory({
       ticketId: ticket.id,

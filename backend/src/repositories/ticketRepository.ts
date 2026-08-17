@@ -25,7 +25,7 @@ const listInclude = {
 } satisfies Prisma.TicketInclude;
 
 const detailInclude = {
-  customer: true,
+  customer: { include: { contacts: true } },
   assignee: { select: { id: true, name: true, avatarUrl: true, email: true } },
   creator: { select: { id: true, name: true, avatarUrl: true } },
   category: true,

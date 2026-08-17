@@ -339,7 +339,14 @@ export interface TicketDetail {
   closedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  customer: { id: string; companyName: string; tradeName: string | null; city: string | null };
+  customer: {
+    id: string;
+    companyName: string;
+    tradeName: string | null;
+    city: string | null;
+    phone: string | null;
+    contacts: { phone: string | null; totalchatContactId: string | null }[];
+  };
   assignee: (BasicUser & { email: string }) | null;
   creator: BasicUser | null;
   category: Category | null;

@@ -77,6 +77,10 @@ export function TicketDetailPage() {
 
   const isTerminal = TERMINAL_STATUSES.includes(ticket.status);
   const visibleHistory = showFullTimeline ? ticket.history : ticket.history.slice(0, TIMELINE_PREVIEW_COUNT);
+  const canConverse =
+    !!ticket.totalchatContactId ||
+    !!ticket.customer.phone ||
+    ticket.customer.contacts.some((contact) => contact.phone || contact.totalchatContactId);
 
   return (
     <div className="space-y-4">
@@ -114,14 +118,14 @@ export function TicketDetailPage() {
             </CardContent>
           </Card>
 
-          {ticket.origin === 'TOTALCHAT' && ticket.totalchatContactId && (
+          {canConverse && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-foreground">Conversa no TotalChat</CardTitle>
+                <CardTitle className="text-foreground">Conversa por WhatsApp</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <TicketConversation ticketId={ticket.id} />
-                <TicketReplyBox ticketId={ticket.id} />
+                <TicketReplyBox ticketId={ticket.id} hasKnownContact={!!ticket.totalchatContactId} />
               </CardContent>
             </Card>
           )}

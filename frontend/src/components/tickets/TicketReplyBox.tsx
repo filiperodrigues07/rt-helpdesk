@@ -13,7 +13,7 @@ function extractErrorMessage(error: unknown, fallback: string) {
   );
 }
 
-export function TicketReplyBox({ ticketId }: { ticketId: string }) {
+export function TicketReplyBox({ ticketId, hasKnownContact }: { ticketId: string; hasKnownContact: boolean }) {
   const [content, setContent] = React.useState('');
   const [files, setFiles] = React.useState<File[]>([]);
   const sendMessage = useSendTicketMessage(ticketId);
@@ -50,7 +50,7 @@ export function TicketReplyBox({ ticketId }: { ticketId: string }) {
           <AttachmentPicker files={files} onChange={setFiles} />
 
           <div className="flex items-center gap-2">
-            <WhatsAppTemplateSender ticketId={ticketId} />
+            {hasKnownContact && <WhatsAppTemplateSender ticketId={ticketId} />}
             <Button
               type="submit"
               size="sm"

@@ -10,7 +10,17 @@
 //   não lidas, então `Ticket.totalchatConversationId` fica vazio por enquanto.
 // - Prioridade e categoria não podem ser inferidas do texto da mensagem, então
 //   todo chamado automático nasce com prioridade NORMAL e sem categoria.
-// - Responsável não é atribuído automaticamente (sem regra definida ainda).
+// - Responsável é atribuído automaticamente quando dá pra identificar: o
+//   campo `aid` (id do atendente) só vem preenchido em
+//   GetTodasMensagensNaoLidas, mas esse endpoint só retorna mensagens do
+//   CLIENTE (s === 0) — mensagens da equipe nunca aparecem como "não lidas"
+//   pela própria equipe. Por isso resolvemos o atendente atual olhando o
+//   histórico completo da conversa (GetMensagens, primeira página — mensagens
+//   mais recentes), pegando o nome (`f`) da última mensagem enviada pela
+//   equipe (s === 1) e casando com a lista oficial de atendentes
+//   (listaUsuarios) pra achar o id, depois `User.totalchatAttendantId`. Sem
+//   mensagem da equipe ainda (conversa só com o cliente), o chamado nasce sem
+//   responsável, como antes — nunca desatribuímos automaticamente.
 //
 // `GetTodasMensagensNaoLidas` com marcaLida=true retorna HTTP 400 (bug do
 // próprio servidor do TotalChat, confirmado em 2026-08-14 — a chamada segue
@@ -23,15 +33,18 @@
 import { prisma } from '../../utils/prisma';
 import { env } from '../../utils/env';
 import { encrypt } from '../../utils/crypto';
+import { AppError } from '../../utils/AppError';
 import { totalChatConfigRepository } from '../../repositories/totalChatConfigRepository';
+import { notificationService } from '../../services/notificationService';
 import { totalChatClient, invalidateConfig } from './client';
-import { TotalChatMensagem } from './types';
+import { TotalChatMensagem, TotalChatSendTemplateComponent } from './types';
 
 export interface TotalChatConfigInput {
   apiUrl?: string;
   username?: string;
   password?: string;
   connectionId?: number | null;
+  whatsappCloudApiFid?: number | null;
   pollingEnabled?: boolean;
   pollIntervalSeconds?: number;
 }
@@ -156,7 +169,7 @@ function resolveMediaUrl(path: string): string | null {
   return MEDIA_BASE_URL + path.replace(/^\/+/, '');
 }
 
-async function fetchConversationMessages(clienteId: number): Promise<TotalChatMensagem[]> {
+export async function fetchConversationMessages(clienteId: number): Promise<TotalChatMensagem[]> {
   const byId = new Map<number, TotalChatMensagem>();
 
   for (let pag = 0; pag < MAX_CONVERSATION_PAGES; pag++) {
@@ -170,7 +183,41 @@ async function fetchConversationMessages(clienteId: number): Promise<TotalChatMe
   return [...byId.values()].sort((a, b) => a.d - b.d);
 }
 
-async function processContactMessages(clienteId: number, messages: TotalChatMensagem[]) {
+// nome do atendente (como aparece em `f` nas mensagens) -> id do atendente,
+// pela lista oficial (listaUsuarios). Construído uma vez por sync/backfill e
+// reaproveitado pra cada contato, pra não bater na API de atendentes toda hora.
+export async function buildAttendantIdByName(): Promise<Map<string, string>> {
+  const attendants = await totalChatService.listAttendants();
+  return new Map(attendants.map((attendant) => [attendant.nome, attendant.id]));
+}
+
+// Resolve quem está atendendo esse contato agora: olha a página mais recente
+// do histórico completo (GetMensagens), pega o nome da última mensagem
+// enviada pela equipe (s === 1) e casa com um usuário vinculado via
+// `totalchatAttendantId`. Só a primeira página é suficiente pra achar
+// atividade recente sem precisar varrer a conversa inteira.
+export async function resolveCurrentAttendant(
+  clienteId: number,
+  attendantIdByName: Map<string, string>,
+): Promise<{ id: string; name: string } | null> {
+  const recentMessages = await totalChatClient.getMensagens(clienteId, 0);
+  const lastTeamMessage = [...recentMessages].sort((a, b) => a.d - b.d).reverse().find((msg) => msg.s === 1 && msg.f);
+  if (!lastTeamMessage) return null;
+
+  const attendantId = attendantIdByName.get(lastTeamMessage.f);
+  if (!attendantId) return null;
+
+  return prisma.user.findFirst({
+    where: { totalchatAttendantId: attendantId, active: true },
+    select: { id: true, name: true },
+  });
+}
+
+async function processContactMessages(
+  clienteId: number,
+  messages: TotalChatMensagem[],
+  attendantIdByName: Map<string, string>,
+) {
   const sorted = [...messages].sort((a, b) => a.d - b.d);
   const lastProcessedId = await getLastProcessedMessageId(clienteId);
   const newMessages = lastProcessedId !== null ? sorted.filter((msg) => msg.d > lastProcessedId) : sorted;
@@ -194,6 +241,9 @@ async function processContactMessages(clienteId: number, messages: TotalChatMens
   const description = messagesToDescription(newMessages) || '(mensagem sem texto — anexo/mídia)';
   const lastMessage = newMessages[newMessages.length - 1];
 
+  await delay(REQUEST_THROTTLE_MS);
+  const assignee = await resolveCurrentAttendant(clienteId, attendantIdByName);
+
   const existingTicket = await findOpenTicketForContact(clienteId);
 
   if (existingTicket) {
@@ -211,10 +261,36 @@ async function processContactMessages(clienteId: number, messages: TotalChatMens
         newValue: 'Nova mensagem recebida via TotalChat',
       },
     });
+
+    const shouldReassign = !!assignee && assignee.id !== existingTicket.assigneeId;
+
     await prisma.ticket.update({
       where: { id: existingTicket.id },
-      data: { totalchatMessageId: lastMessage ? String(lastMessage.d) : existingTicket.totalchatMessageId },
+      data: {
+        totalchatMessageId: lastMessage ? String(lastMessage.d) : existingTicket.totalchatMessageId,
+        ...(shouldReassign ? { assigneeId: assignee!.id } : {}),
+      },
     });
+
+    if (shouldReassign) {
+      await prisma.ticketHistory.create({
+        data: {
+          ticketId: existingTicket.id,
+          action: existingTicket.assigneeId ? 'RESPONSAVEL_ALTERADO' : 'RESPONSAVEL_ATRIBUIDO',
+          fieldName: 'assigneeId',
+          newValue: assignee!.name,
+        },
+      });
+      await notificationService.notify({
+        userId: assignee!.id,
+        type: 'CHAMADO_ATRIBUIDO',
+        title: `Chamado atribuído: #${existingTicket.number}`,
+        message: existingTicket.title,
+        relatedTicketId: existingTicket.id,
+        relatedUrl: `/chamados/${existingTicket.id}`,
+      });
+    }
+
     return { action: 'updated' as const, ticketId: existingTicket.id };
   }
 
@@ -234,6 +310,7 @@ async function processContactMessages(clienteId: number, messages: TotalChatMens
       totalchatMessageId: lastMessage ? String(lastMessage.d) : null,
       slaRuleId: slaRule?.id,
       slaDueAt,
+      assigneeId: assignee?.id,
     },
   });
 
@@ -241,7 +318,37 @@ async function processContactMessages(clienteId: number, messages: TotalChatMens
     data: { ticketId: ticket.id, action: 'CHAMADO_CRIADO', newValue: 'Origem: TotalChat' },
   });
 
+  if (assignee) {
+    await prisma.ticketHistory.create({
+      data: { ticketId: ticket.id, action: 'RESPONSAVEL_ATRIBUIDO', newValue: assignee.name },
+    });
+    await notificationService.notify({
+      userId: assignee.id,
+      type: 'CHAMADO_ATRIBUIDO',
+      title: `Novo chamado atribuído: #${ticket.number}`,
+      message: ticket.title,
+      relatedTicketId: ticket.id,
+      relatedUrl: `/chamados/${ticket.id}`,
+    });
+  }
+
   return { action: 'created' as const, ticketId: ticket.id };
+}
+
+async function resolveConnectionId(): Promise<number | undefined> {
+  const config = await totalChatConfigRepository.get();
+  return config?.connectionId ?? env.totalChat.connectionId ?? undefined;
+}
+
+async function requireCloudApiFid(): Promise<number> {
+  const config = await totalChatConfigRepository.get();
+  if (!config?.whatsappCloudApiFid) {
+    throw new AppError(
+      'Configure a Fonte WhatsApp Cloud API em Configurações → Integrações antes de enviar templates.',
+      400,
+    );
+  }
+  return config.whatsappCloudApiFid;
 }
 
 export const totalChatService = {
@@ -290,6 +397,7 @@ export const totalChatService = {
       username: dbConfig?.username || env.totalChat.username || '',
       hasPassword: !!(dbConfig?.password || env.totalChat.password),
       connectionId: dbConfig?.connectionId ?? env.totalChat.connectionId ?? null,
+      whatsappCloudApiFid: dbConfig?.whatsappCloudApiFid ?? null,
       pollingEnabled: dbConfig?.pollingEnabled ?? env.totalChat.pollingEnabled,
       pollIntervalSeconds: dbConfig?.pollIntervalSeconds ?? env.totalChat.pollIntervalSeconds,
     };
@@ -301,6 +409,7 @@ export const totalChatService = {
       username: input.username,
       ...(input.password ? { password: encrypt(input.password) } : {}),
       connectionId: input.connectionId,
+      whatsappCloudApiFid: input.whatsappCloudApiFid,
       pollingEnabled: input.pollingEnabled,
       pollIntervalSeconds: input.pollIntervalSeconds,
     });
@@ -330,6 +439,59 @@ export const totalChatService = {
       nome: attendant.nomeAparente,
       departamento: attendant.nomeDepartamento,
     }));
+  },
+
+  // ---- WhatsApp: mensagem livre + templates (Cloud API) ----
+
+  async listWhatsAppSources() {
+    const response = await totalChatClient.getWhatsAppFontes();
+    return response.fontes;
+  },
+
+  async listWhatsAppTemplates(after?: string) {
+    const fid = await requireCloudApiFid();
+    return totalChatClient.listWhatsAppTemplates(fid, after);
+  },
+
+  async getWhatsAppTemplate(templateId: string) {
+    const fid = await requireCloudApiFid();
+    return totalChatClient.getWhatsAppTemplate(fid, templateId);
+  },
+
+  async sendFreeformMessage(
+    recipient: { clienteId?: number; telefone?: string },
+    input: { text?: string; files: { buffer: Buffer; fileName: string; mimeType: string }[] },
+  ) {
+    // Enviar por telefone (sem clienteId ainda cadastrado no TotalChat) exige
+    // informar por qual conexão (número de WhatsApp) a mensagem deve sair.
+    const conexaoId = !recipient.clienteId && recipient.telefone ? await resolveConnectionId() : undefined;
+    const target = conexaoId ? { ...recipient, conexaoId } : recipient;
+
+    if (input.files.length === 0) {
+      if (!input.text?.trim()) throw new AppError('Escreva uma mensagem ou anexe um arquivo', 400);
+      const response = await totalChatClient.enviaMensagem({ ...target, mensagem: input.text });
+      if (!response.sucesso) throw new AppError(response.message || 'Falha ao enviar mensagem pelo WhatsApp', 502);
+      return;
+    }
+
+    for (const [index, file] of input.files.entries()) {
+      const caption = index === 0 ? input.text : undefined;
+      const send = file.mimeType.startsWith('image/') ? totalChatClient.enviaImagem : totalChatClient.enviaDocumento;
+      const response = await send({ ...target, mensagem: caption }, file);
+      if (!response.sucesso) throw new AppError(response.message || 'Falha ao enviar arquivo pelo WhatsApp', 502);
+    }
+  },
+
+  async sendWhatsAppTemplate(
+    clienteId: number,
+    input: { templateName: string; language: string; components: TotalChatSendTemplateComponent[] },
+  ) {
+    const fid = await requireCloudApiFid();
+    const response = await totalChatClient.sendWhatsAppTemplate({ clienteId, fid, ...input });
+    if (!response.sucesso) {
+      throw new AppError(response.msg || 'Falha ao enviar template pelo WhatsApp', 502);
+    }
+    return response;
   },
 
   async syncTickets() {
@@ -367,12 +529,14 @@ export const totalChatService = {
       error?: string;
     }[] = [];
 
+    const attendantIdByName = messagesByClient.size > 0 ? await buildAttendantIdByName() : new Map<string, string>();
+
     let index = 0;
     for (const [clienteId, messages] of messagesByClient) {
       if (index > 0) await delay(REQUEST_THROTTLE_MS);
       index += 1;
       try {
-        const result = await processContactMessages(clienteId, messages);
+        const result = await processContactMessages(clienteId, messages, attendantIdByName);
         results.push({ clienteId, ...result });
       } catch (error) {
         results.push({ clienteId, action: 'error', error: error instanceof Error ? error.message : String(error) });

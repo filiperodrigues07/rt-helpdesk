@@ -134,3 +134,81 @@ export interface TotalChatOpcoesMsg {
   title: string;
   footer: string;
 }
+
+// ---- WhatsApp Cloud API (Template) ----
+// "Fontes" são as conexões do tipo WhatsApp Cloud API (Meta) cadastradas na conta —
+// separadas das conexões normais (v1/Contato/GetConexoes). Sem uma Fonte configurada
+// no TotalChat/Meta Business, esses endpoints não têm o que listar/enviar.
+
+export interface TotalChatWhatsAppFonte {
+  id: number;
+  nome: string;
+  telefone: string;
+  wabaId: string;
+}
+
+export interface TotalChatGetFontesResponse {
+  sucesso: boolean;
+  fontes: TotalChatWhatsAppFonte[];
+}
+
+/** Formato padrão da Cloud API da Meta — repassado tal e qual pelo TotalChat. */
+export type TotalChatTemplateComponentType = 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
+export type TotalChatTemplateHeaderFormat = 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION';
+export type TotalChatTemplateButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | 'COPY_CODE';
+
+export interface TotalChatTemplateButton {
+  type: TotalChatTemplateButtonType;
+  text: string;
+  url?: string;
+  phone_number?: string;
+  example?: string[];
+}
+
+export interface TotalChatTemplateComponent {
+  type: TotalChatTemplateComponentType;
+  format?: TotalChatTemplateHeaderFormat;
+  text?: string;
+  example?: { header_text?: string[]; header_handle?: string[]; body_text?: string[][] };
+  buttons?: TotalChatTemplateButton[];
+}
+
+export interface TotalChatTemplate {
+  id: string;
+  name: string;
+  language: string;
+  status: string;
+  category: string;
+  quality_score?: unknown;
+  components: TotalChatTemplateComponent[];
+}
+
+export interface TotalChatTemplateListResponse {
+  data: TotalChatTemplate[];
+  paging?: { cursors?: { after?: string } };
+}
+
+/** Payload de envio — mesmo formato de "send message" da Cloud API da Meta. */
+export interface TotalChatSendTemplateComponent {
+  type: 'header' | 'body' | 'button';
+  sub_type?: 'url' | 'quick_reply';
+  index?: string;
+  parameters: Array<{ type: 'text'; text: string } | { type: 'image'; image: { link: string } }>;
+}
+
+export interface TotalChatSendTemplateInput {
+  clienteId: number;
+  fid: number;
+  templateName: string;
+  language: string;
+  templatePreview?: boolean;
+  components: TotalChatSendTemplateComponent[];
+}
+
+export interface TotalChatSendTemplateResponse {
+  sucesso: boolean;
+  d?: unknown;
+  ut?: unknown;
+  messageId?: string;
+  msg?: string;
+}

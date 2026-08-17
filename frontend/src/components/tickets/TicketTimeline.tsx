@@ -16,6 +16,7 @@ const ACTION_LABELS: Record<string, string> = {
   CHAMADO_ENCERRADO: 'encerrou o chamado',
   CHAMADO_REABERTO: 'reabriu o chamado',
   SOLUCAO_ARQUIVADA: 'arquivou a solução anterior',
+  MENSAGEM_ENVIADA_CLIENTE: 'enviou uma mensagem ao cliente pelo WhatsApp',
 };
 
 export function TicketTimeline({ items }: { items: TicketHistoryEntry[] }) {

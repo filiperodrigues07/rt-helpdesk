@@ -1,9 +1,12 @@
 import { TicketOrigin, TicketPriority, TicketStatus } from '@prisma/client';
 import { ticketRepository, TicketListFilters, TicketListOptions } from '../repositories/ticketRepository';
 import { userRepository } from '../repositories/userRepository';
+import { customerRepository } from '../repositories/customerRepository';
 import { notificationService } from './notificationService';
 import { totalChatService } from '../integrations/totalchat/service';
+import { TotalChatSendTemplateComponent } from '../integrations/totalchat/types';
 import { AppError } from '../utils/AppError';
+import { env } from '../utils/env';
 
 const RESOLVED_STATUSES: TicketStatus[] = ['RESOLVIDO', 'ENCERRADO'];
 
@@ -52,6 +55,7 @@ interface CreateTicketInput {
   assigneeId?: string;
   tagIds?: string[];
   creatorId: string;
+  notifyCustomer?: boolean;
 }
 
 interface UpdateTicketInput {
@@ -96,11 +100,16 @@ export const ticketService = {
     return ticket;
   },
 
-  async getConversation(id: string) {
+  async assertTotalChatTicket(id: string) {
     const ticket = await this.getById(id);
     if (ticket.origin !== 'TOTALCHAT' || !ticket.totalchatContactId) {
       throw new AppError('Este chamado não tem uma conversa do TotalChat vinculada', 400);
     }
+    return ticket;
+  },
+
+  async getConversation(id: string) {
+    const ticket = await this.assertTotalChatTicket(id);
 
     const messages = await totalChatService.getConversation(Number(ticket.totalchatContactId));
 
@@ -111,6 +120,63 @@ export const ticketService = {
     // até agora.
     const cutoff = new Date(ticket.createdAt.getTime() - 24 * 60 * 60 * 1000).toISOString();
     return messages.filter((message) => !message.timestamp || message.timestamp >= cutoff);
+  },
+
+  async sendMessage(
+    id: string,
+    actorId: string,
+    input: { content?: string; files: { buffer: Buffer; fileName: string; mimeType: string }[] },
+  ) {
+    const ticket = await this.assertTotalChatTicket(id);
+
+    await totalChatService.sendFreeformMessage(
+      { clienteId: Number(ticket.totalchatContactId) },
+      { text: input.content, files: input.files },
+    );
+
+    await ticketRepository.recordHistory({
+      ticketId: id,
+      authorId: actorId,
+      action: 'MENSAGEM_ENVIADA_CLIENTE',
+      newValue: input.content?.slice(0, 200) || `${input.files.length} arquivo(s) enviado(s)`,
+    });
+  },
+
+  async listWhatsAppTemplates(id: string, after?: string) {
+    await this.assertTotalChatTicket(id);
+    return totalChatService.listWhatsAppTemplates(after);
+  },
+
+  async getWhatsAppTemplate(id: string, templateId: string) {
+    await this.assertTotalChatTicket(id);
+    return totalChatService.getWhatsAppTemplate(templateId);
+  },
+
+  async uploadTemplateHeaderImage(id: string, relativePath: string) {
+    await this.assertTotalChatTicket(id);
+    if (!env.appPublicUrl) {
+      throw new AppError(
+        'APP_PUBLIC_URL não está configurada — imagem de cabeçalho de template exige uma URL pública.',
+        400,
+      );
+    }
+    return `${env.appPublicUrl.replace(/\/$/, '')}${relativePath}`;
+  },
+
+  async sendWhatsAppTemplate(
+    id: string,
+    actorId: string,
+    input: { templateName: string; language: string; components: TotalChatSendTemplateComponent[] },
+  ) {
+    const ticket = await this.assertTotalChatTicket(id);
+    await totalChatService.sendWhatsAppTemplate(Number(ticket.totalchatContactId), input);
+
+    await ticketRepository.recordHistory({
+      ticketId: id,
+      authorId: actorId,
+      action: 'MENSAGEM_ENVIADA_CLIENTE',
+      newValue: `Template: ${input.templateName}`,
+    });
   },
 
   async create(input: CreateTicketInput) {
@@ -160,7 +226,44 @@ export const ticketService = {
       }
     }
 
+    if (input.notifyCustomer) {
+      this.notifyCustomerOfNewTicket(ticket, input.creatorId).catch((error) => {
+        console.error('Falha ao avisar cliente por WhatsApp sobre o novo chamado:', error);
+      });
+    }
+
     return ticketRepository.findById(ticket.id);
+  },
+
+  async notifyCustomerOfNewTicket(
+    ticket: { id: string; number: number; title: string; customerId: string },
+    actorId: string,
+  ) {
+    const customer = await customerRepository.findById(ticket.customerId);
+    if (!customer) return;
+
+    const contactWithTotalChatId = customer.contacts.find((contact) => contact.totalchatContactId);
+    const contactWithPhone = customer.contacts.find((contact) => contact.phone);
+
+    const recipient = contactWithTotalChatId
+      ? { clienteId: Number(contactWithTotalChatId.totalchatContactId) }
+      : contactWithPhone
+        ? { telefone: contactWithPhone.phone as string }
+        : customer.phone
+          ? { telefone: customer.phone }
+          : null;
+
+    if (!recipient) return;
+
+    const message = `Olá! Seu chamado #${ticket.number} foi registrado: "${ticket.title}". Em breve nossa equipe vai te atender.`;
+    await totalChatService.sendFreeformMessage(recipient, { text: message, files: [] });
+
+    await ticketRepository.recordHistory({
+      ticketId: ticket.id,
+      authorId: actorId,
+      action: 'MENSAGEM_ENVIADA_CLIENTE',
+      newValue: message,
+    });
   },
 
   async update(id: string, input: UpdateTicketInput, actorId: string) {

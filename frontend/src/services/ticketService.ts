@@ -23,6 +23,45 @@ export interface TicketConversationMessage {
   timestamp: string | null;
 }
 
+// ---- WhatsApp: mensagem livre + templates (Cloud API da Meta, repassado pelo TotalChat) ----
+
+export type WhatsAppTemplateButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | 'COPY_CODE';
+
+export interface WhatsAppTemplateButton {
+  type: WhatsAppTemplateButtonType;
+  text: string;
+  url?: string;
+  phone_number?: string;
+  example?: string[];
+}
+
+export interface WhatsAppTemplateComponent {
+  type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
+  format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION';
+  text?: string;
+  example?: { header_text?: string[]; header_handle?: string[]; body_text?: string[][] };
+  buttons?: WhatsAppTemplateButton[];
+}
+
+export interface WhatsAppTemplateSummary {
+  id: string;
+  name: string;
+  language: string;
+  status: string;
+  category: string;
+}
+
+export interface WhatsAppTemplateDetail extends WhatsAppTemplateSummary {
+  components: WhatsAppTemplateComponent[];
+}
+
+export interface WhatsAppSendTemplateComponent {
+  type: 'header' | 'body' | 'button';
+  sub_type?: 'url' | 'quick_reply';
+  index?: string;
+  parameters: Array<{ type: 'text'; text: string } | { type: 'image'; image: { link: string } }>;
+}
+
 export const ticketService = {
   async list(filters: TicketListFilters) {
     const { data } = await api.get<ApiSuccess<PaginatedResult<TicketListItem>>>('/tickets', {
@@ -88,5 +127,46 @@ export const ticketService = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return data.data;
+  },
+
+  async sendMessage(id: string, input: { content?: string; files: File[] }) {
+    const formData = new FormData();
+    if (input.content) formData.append('content', input.content);
+    input.files.forEach((file) => formData.append('files', file));
+    await api.post(`/tickets/${id}/messages`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  async listWhatsAppTemplates(id: string, after?: string) {
+    const { data } = await api.get<
+      ApiSuccess<{ data: WhatsAppTemplateSummary[]; paging?: { cursors?: { after?: string } } }>
+    >(`/tickets/${id}/whatsapp-templates`, { params: after ? { after } : undefined });
+    return data.data;
+  },
+
+  async getWhatsAppTemplate(id: string, templateId: string) {
+    const { data } = await api.get<ApiSuccess<WhatsAppTemplateDetail>>(
+      `/tickets/${id}/whatsapp-templates/${templateId}`,
+    );
+    return data.data;
+  },
+
+  async uploadTemplateHeaderImage(id: string, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post<ApiSuccess<{ url: string }>>(
+      `/tickets/${id}/whatsapp-template/header-image`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return data.data.url;
+  },
+
+  async sendWhatsAppTemplate(
+    id: string,
+    input: { templateName: string; language: string; components: WhatsAppSendTemplateComponent[] },
+  ) {
+    await api.post(`/tickets/${id}/whatsapp-template`, input);
   },
 };

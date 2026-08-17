@@ -109,3 +109,38 @@ export const uploadArticleImage = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: articleImageFileFilter,
 }).single('file');
+
+// Anexos de mensagens livres do WhatsApp (chamado) — não gravam em disco, só
+// repassam o buffer pro TotalChat, mesmo padrão de uploadArticleImage.
+export const uploadTicketMessageFiles = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024, files: 10 },
+  fileFilter: (_req, file, callback) => {
+    if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      callback(new AppError('Tipo de arquivo não permitido', 400));
+      return;
+    }
+    callback(null, true);
+  },
+}).array('files', 10);
+
+// Imagem de cabeçalho de template de WhatsApp — precisa de URL pública durável
+// (a Meta busca a imagem depois, de forma assíncrona), por isso vai pro disco,
+// igual uploadTicketAttachment, só que numa subpasta própria do chamado.
+const templateHeaderStorage = multer.diskStorage({
+  destination: (req, _file, callback) => {
+    const dir = path.join(UPLOADS_ROOT, 'tickets', req.params.id, 'whatsapp-template');
+    fs.mkdirSync(dir, { recursive: true });
+    callback(null, dir);
+  },
+  filename: (_req, file, callback) => {
+    const ext = path.extname(file.originalname);
+    callback(null, `${crypto.randomUUID()}${ext}`);
+  },
+});
+
+export const uploadTemplateHeaderImage = multer({
+  storage: templateHeaderStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: imageFileFilter,
+}).single('file');

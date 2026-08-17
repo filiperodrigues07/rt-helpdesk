@@ -46,6 +46,7 @@ const createTicketSchema = z.object({
   priority: z.enum(PRIORITY_VALUES),
   assigneeId: uuid.optional(),
   tagIds: z.array(uuid).optional(),
+  notifyCustomer: z.boolean().optional(),
 });
 
 const updateTicketSchema = z.object({
@@ -74,6 +75,16 @@ const reopenSchema = z.object({
 
 const commentSchema = z.object({
   content: z.string().trim().min(1, 'Comentário não pode ser vazio'),
+});
+
+const sendMessageSchema = z.object({
+  content: z.string().trim().optional(),
+});
+
+const sendTemplateSchema = z.object({
+  templateName: z.string().trim().min(1, 'Selecione um template'),
+  language: z.string().trim().min(1),
+  components: z.array(z.any()),
 });
 
 function requireUser(req: Request) {
@@ -153,6 +164,44 @@ export const ticketController = {
     const { content } = commentSchema.parse(req.body);
     const comment = await ticketService.addComment(req.params.id, user.id, content);
     return created(res, comment);
+  },
+
+  async sendMessage(req: Request, res: Response) {
+    const user = requireUser(req);
+    const { content } = sendMessageSchema.parse(req.body);
+    const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+    await ticketService.sendMessage(req.params.id, user.id, {
+      content,
+      files: files.map((file) => ({ buffer: file.buffer, fileName: file.originalname, mimeType: file.mimetype })),
+    });
+    return ok(res, { sent: true });
+  },
+
+  async listWhatsAppTemplates(req: Request, res: Response) {
+    const after = typeof req.query.after === 'string' ? req.query.after : undefined;
+    const result = await ticketService.listWhatsAppTemplates(req.params.id, after);
+    return ok(res, result);
+  },
+
+  async getWhatsAppTemplate(req: Request, res: Response) {
+    const template = await ticketService.getWhatsAppTemplate(req.params.id, req.params.templateId);
+    return ok(res, template);
+  },
+
+  async uploadTemplateHeaderImage(req: Request, res: Response) {
+    if (!req.file) {
+      throw new AppError('Nenhuma imagem enviada', 400);
+    }
+    const relativePath = `/uploads/tickets/${req.params.id}/whatsapp-template/${req.file.filename}`;
+    const url = await ticketService.uploadTemplateHeaderImage(req.params.id, relativePath);
+    return ok(res, { url });
+  },
+
+  async sendWhatsAppTemplate(req: Request, res: Response) {
+    const user = requireUser(req);
+    const input = sendTemplateSchema.parse(req.body);
+    await ticketService.sendWhatsAppTemplate(req.params.id, user.id, input);
+    return ok(res, { sent: true });
   },
 
   async addAttachment(req: Request, res: Response) {

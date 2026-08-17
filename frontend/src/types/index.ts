@@ -155,6 +155,7 @@ export interface CustomerOption {
   companyName: string;
   tradeName: string | null;
   city: string | null;
+  phone: string | null;
 }
 
 export interface CustomerListItem {
@@ -356,6 +357,7 @@ export interface CreateTicketInput {
   priority: TicketPriority;
   assigneeId?: string;
   tagIds?: string[];
+  notifyCustomer?: boolean;
 }
 
 export interface UpdateTicketInput {

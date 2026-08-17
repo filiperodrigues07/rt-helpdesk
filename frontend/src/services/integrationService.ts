@@ -18,6 +18,7 @@ export interface TotalChatConfig {
   username: string;
   hasPassword: boolean;
   connectionId: number | null;
+  whatsappCloudApiFid: number | null;
   pollingEnabled: boolean;
   pollIntervalSeconds: number;
 }
@@ -27,8 +28,16 @@ export interface TotalChatConfigInput {
   username?: string;
   password?: string;
   connectionId?: number | null;
+  whatsappCloudApiFid?: number | null;
   pollingEnabled?: boolean;
   pollIntervalSeconds?: number;
+}
+
+export interface TotalChatWhatsAppSource {
+  id: number;
+  nome: string;
+  telefone: string;
+  wabaId: string;
 }
 
 export const integrationService = {
@@ -59,6 +68,11 @@ export const integrationService = {
 
   async listTotalChatAttendants() {
     const { data } = await api.get<ApiSuccess<TotalChatAttendant[]>>('/integrations/totalchat/attendants');
+    return data.data;
+  },
+
+  async listWhatsAppSources() {
+    const { data } = await api.get<ApiSuccess<TotalChatWhatsAppSource[]>>('/integrations/totalchat/whatsapp-sources');
     return data.data;
   },
 };

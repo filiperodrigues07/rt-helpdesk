@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ticketService } from '@/services/ticketService';
+import { ticketService, type WhatsAppSendTemplateComponent } from '@/services/ticketService';
 import type {
   CreateTicketInput,
   ReopenTicketInput,
@@ -88,6 +88,35 @@ export function useUploadAttachment(id: string) {
   return useMutation({
     mutationFn: (file: File) => ticketService.uploadAttachment(id, file),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'detail', id] });
+    },
+  });
+}
+
+export function useSendTicketMessage(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { content?: string; files: File[] }) => ticketService.sendMessage(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'conversation', id] });
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'detail', id] });
+    },
+  });
+}
+
+export function useUploadTemplateHeaderImage(id: string) {
+  return useMutation({
+    mutationFn: (file: File) => ticketService.uploadTemplateHeaderImage(id, file),
+  });
+}
+
+export function useSendWhatsAppTemplate(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { templateName: string; language: string; components: WhatsAppSendTemplateComponent[] }) =>
+      ticketService.sendWhatsAppTemplate(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'conversation', id] });
       queryClient.invalidateQueries({ queryKey: ['tickets', 'detail', id] });
     },
   });

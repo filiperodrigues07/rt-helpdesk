@@ -20,6 +20,11 @@ export const env = {
   jwtSecret: required('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '8h',
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  // URL pública onde este backend está acessível (ex.: https://helpdesk.empresa.com.br).
+  // Necessária só para enviar templates de WhatsApp com imagem no cabeçalho — a Meta
+  // busca a imagem depois, de forma assíncrona, a partir de uma URL absoluta e pública.
+  // Não funciona a partir de localhost em desenvolvimento.
+  appPublicUrl: process.env.APP_PUBLIC_URL || undefined,
   totalChat: {
     apiUrl: process.env.TOTALCHAT_API_URL ?? 'https://api.totalchat.com.br/',
     username: process.env.TOTALCHAT_USERNAME || undefined,

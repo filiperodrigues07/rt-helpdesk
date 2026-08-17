@@ -25,3 +25,11 @@ export function useUpdateTotalChatConfig() {
     },
   });
 }
+
+export function useWhatsAppSources(enabled: boolean) {
+  return useQuery({
+    queryKey: ['integrations', 'totalchat-whatsapp-sources'],
+    queryFn: integrationService.listWhatsAppSources,
+    enabled,
+  });
+}

@@ -17,3 +17,19 @@ export function useTicketConversation(id: string | undefined, enabled: boolean) 
     staleTime: 60 * 1000,
   });
 }
+
+export function useWhatsAppTemplates(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['tickets', 'whatsapp-templates', id],
+    queryFn: () => ticketService.listWhatsAppTemplates(id),
+    enabled: !!id && enabled,
+  });
+}
+
+export function useWhatsAppTemplate(id: string, templateId: string | undefined) {
+  return useQuery({
+    queryKey: ['tickets', 'whatsapp-template', id, templateId],
+    queryFn: () => ticketService.getWhatsAppTemplate(id, templateId as string),
+    enabled: !!id && !!templateId,
+  });
+}

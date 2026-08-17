@@ -18,12 +18,17 @@ import {
   TotalChatCriaClienteResponse,
   TotalChatEnviaMensagemResponse,
   TotalChatEtiqueta,
+  TotalChatGetFontesResponse,
   TotalChatListaMensagensResponse,
   TotalChatLoginResponse,
   TotalChatMensagem,
   TotalChatMotivoEncerramento,
   TotalChatOpcoesMsg,
+  TotalChatSendTemplateInput,
+  TotalChatSendTemplateResponse,
   TotalChatSucessoResponse,
+  TotalChatTemplate,
+  TotalChatTemplateListResponse,
   TotalChatUsuario,
 } from './types';
 
@@ -369,5 +374,32 @@ export const totalChatClient = {
 
   getMotivosEncerramento() {
     return request<TotalChatMotivoEncerramento[]>('v1/Contato/GetMotivosEncerramento');
+  },
+
+  // ---- WhatsApp Cloud API (Template) ----
+  getWhatsAppFontes() {
+    return request<TotalChatGetFontesResponse>('v1/WhatsAppTemplate/GetFontes');
+  },
+
+  listWhatsAppTemplates(fid: number, after?: string) {
+    return request<TotalChatTemplateListResponse>('v1/WhatsAppTemplate/List', { query: { fid, after } });
+  },
+
+  getWhatsAppTemplate(fid: number, templateId: string) {
+    return request<TotalChatTemplate>('v1/WhatsAppTemplate/Get', { query: { fid, templateId } });
+  },
+
+  sendWhatsAppTemplate(input: TotalChatSendTemplateInput) {
+    return request<TotalChatSendTemplateResponse>('v1/WhatsAppTemplate/SendTemplate', {
+      method: 'POST',
+      body: {
+        ClienteId: input.clienteId,
+        Fid: input.fid,
+        TemplateName: input.templateName,
+        Language: input.language,
+        TemplatePreview: input.templatePreview,
+        Components: input.components,
+      },
+    });
   },
 };

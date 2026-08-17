@@ -1,13 +1,14 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { TagMultiSelect } from '@/components/tickets/TagMultiSelect';
 import { AttachmentPicker } from '@/components/tickets/AttachmentPicker';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -38,6 +39,9 @@ export function CreateTicketPage() {
   const [tagIds, setTagIds] = React.useState<string[]>([]);
   const [files, setFiles] = React.useState<File[]>([]);
   const [uploading, setUploading] = React.useState(false);
+  const [notifyCustomer, setNotifyCustomer] = React.useState(true);
+
+  const selectedCustomer = customers?.find((customer) => customer.id === customerId);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -56,6 +60,7 @@ export function CreateTicketPage() {
         priority,
         assigneeId: assigneeId || undefined,
         tagIds: tagIds.length ? tagIds : undefined,
+        notifyCustomer: selectedCustomer?.phone ? notifyCustomer : undefined,
       });
 
       if (files.length > 0) {
@@ -108,6 +113,19 @@ export function CreateTicketPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {selectedCustomer?.phone && (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/40 px-3 py-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                  <span>
+                    Avisar {selectedCustomer.tradeName ?? selectedCustomer.companyName} por WhatsApp (
+                    {selectedCustomer.phone})
+                  </span>
+                </div>
+                <Switch checked={notifyCustomer} onCheckedChange={setNotifyCustomer} />
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="title">Título *</Label>

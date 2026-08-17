@@ -10,6 +10,7 @@ const totalChatConfigSchema = z.object({
   username: z.string().trim().optional(),
   password: z.string().trim().optional(),
   connectionId: z.number().int().positive().nullable().optional(),
+  whatsappCloudApiFid: z.number().int().positive().nullable().optional(),
   pollingEnabled: z.boolean().optional(),
   pollIntervalSeconds: z.number().int().min(10).max(3600).optional(),
 });
@@ -58,5 +59,10 @@ export const integrationController = {
       apiUrl: input.apiUrl || undefined,
     });
     return ok(res, config);
+  },
+
+  async listWhatsAppSources(_req: Request, res: Response) {
+    const fontes = await totalChatService.listWhatsAppSources();
+    return ok(res, fontes);
   },
 };

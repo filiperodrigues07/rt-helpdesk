@@ -26,3 +26,8 @@ integrationRoutes.put(
   authorize('ADMINISTRADOR', 'GERENTE'),
   asyncHandler(integrationController.updateTotalChatConfig),
 );
+integrationRoutes.get(
+  '/totalchat/whatsapp-sources',
+  authorize('ADMINISTRADOR', 'GERENTE'),
+  asyncHandler(integrationController.listWhatsAppSources),
+);

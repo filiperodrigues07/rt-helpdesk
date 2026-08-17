@@ -13,6 +13,7 @@ export const totalChatConfigRepository = {
     username?: string | null;
     password?: string | null;
     connectionId?: number | null;
+    whatsappCloudApiFid?: number | null;
     pollingEnabled?: boolean;
     pollIntervalSeconds?: number;
   }) {

@@ -45,7 +45,7 @@ export const customerRepository = {
 
   listMinimal() {
     return prisma.customer.findMany({
-      select: { id: true, companyName: true, tradeName: true, city: true },
+      select: { id: true, companyName: true, tradeName: true, city: true, phone: true },
       orderBy: { companyName: 'asc' },
     });
   },

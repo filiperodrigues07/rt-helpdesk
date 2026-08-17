@@ -16,6 +16,7 @@ import { SlaIndicator } from '@/components/tickets/SlaIndicator';
 import { TicketTimeline } from '@/components/tickets/TicketTimeline';
 import { TicketComments } from '@/components/tickets/TicketComments';
 import { TicketConversation } from '@/components/tickets/TicketConversation';
+import { TicketReplyBox } from '@/components/tickets/TicketReplyBox';
 import { TicketAttachments } from '@/components/tickets/TicketAttachments';
 import { TicketKnowledgeBase } from '@/components/tickets/TicketKnowledgeBase';
 import { TicketStatusControl } from '@/components/tickets/TicketStatusControl';
@@ -118,8 +119,9 @@ export function TicketDetailPage() {
               <CardHeader>
                 <CardTitle className="text-foreground">Conversa no TotalChat</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
                 <TicketConversation ticketId={ticket.id} />
+                <TicketReplyBox ticketId={ticket.id} />
               </CardContent>
             </Card>
           )}

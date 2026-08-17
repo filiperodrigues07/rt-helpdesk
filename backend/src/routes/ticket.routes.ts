@@ -3,7 +3,7 @@ import { ticketController } from '../controllers/ticketController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { authenticate } from '../middlewares/auth';
 import { requireScreenPermission } from '../middlewares/permission';
-import { uploadTicketAttachment } from '../middlewares/upload';
+import { uploadTicketAttachment, uploadTicketMessageFiles, uploadTemplateHeaderImage } from '../middlewares/upload';
 
 export const ticketRoutes = Router();
 
@@ -21,3 +21,12 @@ ticketRoutes.post('/:id/close', asyncHandler(ticketController.close));
 ticketRoutes.post('/:id/reopen', asyncHandler(ticketController.reopen));
 ticketRoutes.post('/:id/comments', asyncHandler(ticketController.addComment));
 ticketRoutes.post('/:id/attachments', uploadTicketAttachment, asyncHandler(ticketController.addAttachment));
+ticketRoutes.post('/:id/messages', uploadTicketMessageFiles, asyncHandler(ticketController.sendMessage));
+ticketRoutes.get('/:id/whatsapp-templates', asyncHandler(ticketController.listWhatsAppTemplates));
+ticketRoutes.get('/:id/whatsapp-templates/:templateId', asyncHandler(ticketController.getWhatsAppTemplate));
+ticketRoutes.post(
+  '/:id/whatsapp-template/header-image',
+  uploadTemplateHeaderImage,
+  asyncHandler(ticketController.uploadTemplateHeaderImage),
+);
+ticketRoutes.post('/:id/whatsapp-template', asyncHandler(ticketController.sendWhatsAppTemplate));

@@ -198,10 +198,16 @@ POST   /api/tickets/:id/close         (Encerrado — só permitido a partir de R
 POST   /api/tickets/:id/reopen        (motivo opcional — volta pra Em andamento, recalcula SLA, arquiva a solução anterior no histórico)
 POST   /api/tickets/:id/comments
 POST   /api/tickets/:id/attachments   (multipart/form-data)
+POST   /api/tickets/:id/messages                      (responde ao cliente via WhatsApp — texto e/ou anexos, multipart/form-data; só chamados com origem TotalChat)
+GET    /api/tickets/:id/whatsapp-templates             (templates aprovados na Meta, via Cloud API do TotalChat)
+GET    /api/tickets/:id/whatsapp-templates/:templateId
+POST   /api/tickets/:id/whatsapp-template/header-image (upload de imagem de cabeçalho de template, multipart/form-data — exige APP_PUBLIC_URL)
+POST   /api/tickets/:id/whatsapp-template              (envia template aprovado — reabre conversa fora da janela de 24h)
 
 GET    /api/integrations
 POST   /api/integrations/totalchat/test    (testa login — sem efeitos colaterais)
 POST   /api/integrations/totalchat/sync    (sincronização manual — ver aviso na seção TotalChat)
+GET    /api/integrations/totalchat/whatsapp-sources    (Fontes Cloud API configuradas na conta — Administrador/Gerente)
 GET    /api/integrations/totalchat/config  (credenciais salvas — sem a senha; Administrador/Gerente)
 PUT    /api/integrations/totalchat/config  (salva usuário/senha/URL/connectionId/polling; Administrador/Gerente)
 

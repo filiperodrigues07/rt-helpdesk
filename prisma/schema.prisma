@@ -410,6 +410,7 @@ model TotalChatConfig {
   username            String?
   password            String?
   connectionId        Int?
+  whatsappCloudApiFid Int?
   pollingEnabled      Boolean  @default(false)
   pollIntervalSeconds Int      @default(60)
 

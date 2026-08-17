@@ -40,6 +40,27 @@ export interface TotalChatWhatsAppSource {
   wabaId: string;
 }
 
+export interface ChErpConfig {
+  baseUrl: string;
+  hasToken: boolean;
+  cnpjPrincipal: string;
+  chaveEmpresa: number;
+}
+
+export interface ChErpConfigInput {
+  baseUrl?: string;
+  token?: string;
+  cnpjPrincipal?: string;
+  chaveEmpresa?: number;
+}
+
+export interface ChErpSyncResult {
+  total: number;
+  created: number;
+  updated: number;
+  skipped: number;
+}
+
 export const integrationService = {
   async list() {
     const { data } = await api.get<ApiSuccess<IntegrationInfo[]>>('/integrations');
@@ -73,6 +94,26 @@ export const integrationService = {
 
   async listWhatsAppSources() {
     const { data } = await api.get<ApiSuccess<TotalChatWhatsAppSource[]>>('/integrations/totalchat/whatsapp-sources');
+    return data.data;
+  },
+
+  async getChErpConfig() {
+    const { data } = await api.get<ApiSuccess<ChErpConfig>>('/integrations/ch-erp/config');
+    return data.data;
+  },
+
+  async updateChErpConfig(input: ChErpConfigInput) {
+    const { data } = await api.put<ApiSuccess<ChErpConfig>>('/integrations/ch-erp/config', input);
+    return data.data;
+  },
+
+  async testChErp() {
+    const { data } = await api.post<ApiSuccess<{ configured: boolean }>>('/integrations/ch-erp/test');
+    return data.data;
+  },
+
+  async syncChErp() {
+    const { data } = await api.post<ApiSuccess<ChErpSyncResult>>('/integrations/ch-erp/sync');
     return data.data;
   },
 };

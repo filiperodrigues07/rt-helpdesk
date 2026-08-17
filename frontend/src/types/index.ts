@@ -403,7 +403,7 @@ export interface TicketListFilters {
 export type IntegrationStatus = 'AGUARDANDO_CONFIGURACAO' | 'CONECTADO' | 'ERRO';
 
 export interface IntegrationInfo {
-  provider: 'TOTALCHAT' | 'KNOWLEDGE_BASE';
+  provider: 'TOTALCHAT' | 'KNOWLEDGE_BASE' | 'CH_ERP';
   status: IntegrationStatus;
 }
 

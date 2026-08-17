@@ -12,6 +12,8 @@ import {
   Trash2,
   Wifi,
 } from 'lucide-react';
+import totalChatLogo from '@/assets/totalchat-logo.jpg';
+import chSistemasLogo from '@/assets/ch-sistemas-logo.svg';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,7 +29,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useIntegrations, useTotalChatConfig, useUpdateTotalChatConfig, useWhatsAppSources } from '@/hooks/useIntegrations';
+import {
+  useChErpConfig,
+  useIntegrations,
+  useTotalChatConfig,
+  useUpdateChErpConfig,
+  useUpdateTotalChatConfig,
+  useWhatsAppSources,
+} from '@/hooks/useIntegrations';
 import { integrationService } from '@/services/integrationService';
 import { useLogo, useRemoveLogo, useUploadLogo } from '@/hooks/useLogo';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,17 +50,22 @@ const CAN_MANAGE_ROLES = ['ADMINISTRADOR', 'GERENTE'];
 
 const INTEGRATION_META: Record<
   IntegrationInfo['provider'],
-  { label: string; description: string; icon: typeof MessageSquare }
+  { label: string; description: string; icon?: typeof MessageSquare; logo?: string }
 > = {
   TOTALCHAT: {
     label: 'TotalChat',
     description: 'Plataforma de atendimento ao cliente utilizada pela equipe.',
-    icon: MessageSquare,
+    logo: totalChatLogo,
   },
   KNOWLEDGE_BASE: {
     label: 'Base de Conhecimento',
     description: 'Base de artigos e soluções mantida em sistema externo.',
     icon: BookOpen,
+  },
+  CH_ERP: {
+    label: 'CH Sistemas',
+    description: 'Base própria do ERP (Integrador BI), usada para importar cadastros de cliente.',
+    logo: chSistemasLogo,
   },
 };
 
@@ -67,7 +81,9 @@ export function SettingsPage() {
 
   const { data, isLoading } = useIntegrations();
   const [syncConfirmOpen, setSyncConfirmOpen] = React.useState(false);
+  const [ceSyncConfirmOpen, setCeSyncConfirmOpen] = React.useState(false);
   const [tcCredentialsOpen, setTcCredentialsOpen] = React.useState(false);
+  const [ceCredentialsOpen, setCeCredentialsOpen] = React.useState(false);
 
   const { data: logoUrl, isLoading: logoLoading } = useLogo();
   const uploadLogo = useUploadLogo();
@@ -79,6 +95,41 @@ export function SettingsPage() {
   const { data: whatsappSources, isLoading: whatsappSourcesLoading } = useWhatsAppSources(
     canManage && tcCredentialsOpen,
   );
+
+  const { data: chErpConfig, isLoading: chErpConfigLoading } = useChErpConfig(canManage);
+  const updateChErpConfig = useUpdateChErpConfig();
+
+  const [ceBaseUrl, setCeBaseUrl] = React.useState('');
+  const [ceToken, setCeToken] = React.useState('');
+  const [ceCnpjPrincipal, setCeCnpjPrincipal] = React.useState('');
+  const [ceChaveEmpresa, setCeChaveEmpresa] = React.useState('1');
+
+  React.useEffect(() => {
+    if (!chErpConfig) return;
+    setCeBaseUrl(chErpConfig.baseUrl);
+    setCeToken('');
+    setCeCnpjPrincipal(chErpConfig.cnpjPrincipal);
+    setCeChaveEmpresa(String(chErpConfig.chaveEmpresa));
+  }, [chErpConfig]);
+
+  async function handleSaveChErpConfig(event: React.FormEvent) {
+    event.preventDefault();
+    try {
+      await updateChErpConfig.mutateAsync({
+        baseUrl: ceBaseUrl || undefined,
+        token: ceToken || undefined,
+        cnpjPrincipal: ceCnpjPrincipal || undefined,
+        chaveEmpresa: ceChaveEmpresa ? Number(ceChaveEmpresa) : undefined,
+      });
+      setCeToken('');
+      toast({ title: 'Credenciais do ERP salvas' });
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ??
+        'Verifique os dados e tente novamente.';
+      toast({ variant: 'destructive', title: 'Erro ao salvar credenciais', description: message });
+    }
+  }
 
   const [tcApiUrl, setTcApiUrl] = React.useState('');
   const [tcUsername, setTcUsername] = React.useState('');
@@ -150,6 +201,25 @@ export function SettingsPage() {
     onSuccess: () => toast({ title: 'Conexão OK', description: 'Login no TotalChat funcionou normalmente.' }),
     onError: () =>
       toast({ variant: 'destructive', title: 'Falha na conexão', description: 'Verifique usuário/senha no .env.' }),
+  });
+
+  const testChErpMutation = useMutation({
+    mutationFn: integrationService.testChErp,
+    onSuccess: () => toast({ title: 'Conexão OK', description: 'A busca de teste no ERP funcionou normalmente.' }),
+    onError: () =>
+      toast({ variant: 'destructive', title: 'Falha na conexão', description: 'Verifique o endereço/token do ERP.' }),
+  });
+
+  const syncChErpMutation = useMutation({
+    mutationFn: integrationService.syncChErp,
+    onSuccess: (result) => {
+      toast({
+        title: 'Importação concluída',
+        description: `${result.total} cliente(s) no ERP — ${result.created} criado(s), ${result.updated} atualizado(s)${result.skipped ? `, ${result.skipped} ignorado(s) (sem CNPJ válido)` : ''}.`,
+      });
+    },
+    onError: () =>
+      toast({ variant: 'destructive', title: 'Erro na importação', description: 'Veja os logs do backend.' }),
   });
 
   const syncMutation = useMutation({
@@ -277,14 +347,21 @@ export function SettingsPage() {
                 const meta = INTEGRATION_META[integration.provider];
                 const Icon = meta.icon;
                 const isTotalChat = integration.provider === 'TOTALCHAT';
+                const isChErp = integration.provider === 'CH_ERP';
 
                 return (
                   <div key={integration.provider} className="rounded-md border border-border">
                     <div className="flex flex-wrap items-center justify-between gap-4 p-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                          <Icon className="h-4 w-4" />
-                        </div>
+                        {meta.logo ? (
+                          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-md bg-white p-1">
+                            <img src={meta.logo} alt={meta.label} className="h-full w-full object-contain" />
+                          </div>
+                        ) : (
+                          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                            {Icon && <Icon className="h-4 w-4" />}
+                          </div>
+                        )}
                         <div>
                           <p className="text-sm font-medium">{meta.label}</p>
                           <p className="text-xs text-muted-foreground">{meta.description}</p>
@@ -322,6 +399,36 @@ export function SettingsPage() {
                             </Button>
                           </>
                         )}
+                        {isChErp && integration.status === 'CONECTADO' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={testChErpMutation.isPending}
+                              onClick={() => testChErpMutation.mutate()}
+                            >
+                              {testChErpMutation.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Wifi className="h-3.5 w-3.5" />
+                              )}
+                              Testar conexão
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={syncChErpMutation.isPending}
+                              onClick={() => setCeSyncConfirmOpen(true)}
+                            >
+                              {syncChErpMutation.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-3.5 w-3.5" />
+                              )}
+                              Importar clientes
+                            </Button>
+                          </>
+                        )}
                         <Badge variant={integration.status === 'CONECTADO' ? 'success' : 'secondary'}>
                           <CircleDot className="mr-1 h-3 w-3" />
                           {STATUS_LABELS[integration.status]}
@@ -336,6 +443,19 @@ export function SettingsPage() {
                           >
                             <ChevronDown
                               className={cn('h-4 w-4 transition-transform', tcCredentialsOpen && 'rotate-180')}
+                            />
+                          </Button>
+                        )}
+                        {isChErp && canManage && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setCeCredentialsOpen((prev) => !prev)}
+                            aria-label={ceCredentialsOpen ? 'Ocultar credenciais' : 'Mostrar credenciais'}
+                          >
+                            <ChevronDown
+                              className={cn('h-4 w-4 transition-transform', ceCredentialsOpen && 'rotate-180')}
                             />
                           </Button>
                         )}
@@ -467,6 +587,74 @@ export function SettingsPage() {
                         )}
                       </div>
                     )}
+
+                    {isChErp && canManage && ceCredentialsOpen && (
+                      <div className="border-t border-border p-4">
+                        <div className="mb-3 flex items-center gap-1.5 text-sm font-medium text-foreground">
+                          <KeyRound className="h-4 w-4" />
+                          Credenciais do ERP
+                        </div>
+                        <p className="mb-4 text-xs text-muted-foreground">
+                          Conexão com a base própria do ERP (Integrador BI). O token é gerado no CHServer em
+                          Configurações → Integrador BI.
+                        </p>
+
+                        {chErpConfigLoading ? (
+                          <Skeleton className="h-48 w-full" />
+                        ) : (
+                          <form className="space-y-4" onSubmit={handleSaveChErpConfig}>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="ce-base-url">Endereço do CHServerWeb</Label>
+                              <Input
+                                id="ce-base-url"
+                                placeholder="http://endereco-do-servidor:8080/"
+                                value={ceBaseUrl}
+                                onChange={(event) => setCeBaseUrl(event.target.value)}
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <Label htmlFor="ce-token">Token</Label>
+                                <Input
+                                  id="ce-token"
+                                  type="password"
+                                  value={ceToken}
+                                  onChange={(event) => setCeToken(event.target.value)}
+                                  placeholder={chErpConfig?.hasToken ? 'Deixe em branco para manter o atual' : undefined}
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="ce-cnpj-principal">CNPJ da estrutura principal</Label>
+                                <Input
+                                  id="ce-cnpj-principal"
+                                  value={ceCnpjPrincipal}
+                                  onChange={(event) => setCeCnpjPrincipal(event.target.value)}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Label htmlFor="ce-chave-empresa">Chave da empresa</Label>
+                              <Input
+                                id="ce-chave-empresa"
+                                type="number"
+                                min={1}
+                                value={ceChaveEmpresa}
+                                onChange={(event) => setCeChaveEmpresa(event.target.value)}
+                              />
+                            </div>
+
+                            <div className="flex justify-end">
+                              <Button type="submit" size="sm" disabled={updateChErpConfig.isPending}>
+                                {updateChErpConfig.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                Salvar credenciais
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -495,6 +683,31 @@ export function SettingsPage() {
               }}
             >
               Sincronizar agora
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={ceSyncConfirmOpen} onOpenChange={setCeSyncConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Importar clientes do ERP agora?</DialogTitle>
+            <DialogDescription>
+              Isso vai buscar todos os cadastros de cliente da base do ERP e criar ou atualizar clientes aqui,
+              casando pelo CNPJ. Clientes sem CNPJ válido (pessoa física) são ignorados.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCeSyncConfirmOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                setCeSyncConfirmOpen(false);
+                syncChErpMutation.mutate();
+              }}
+            >
+              Importar clientes
             </Button>
           </div>
         </DialogContent>

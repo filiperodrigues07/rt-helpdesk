@@ -31,3 +31,16 @@ integrationRoutes.get(
   authorize('ADMINISTRADOR', 'GERENTE'),
   asyncHandler(integrationController.listWhatsAppSources),
 );
+
+integrationRoutes.post('/ch-erp/test', asyncHandler(integrationController.testChErp));
+integrationRoutes.post('/ch-erp/sync', asyncHandler(integrationController.syncChErp));
+integrationRoutes.get(
+  '/ch-erp/config',
+  authorize('ADMINISTRADOR', 'GERENTE'),
+  asyncHandler(integrationController.getChErpConfig),
+);
+integrationRoutes.put(
+  '/ch-erp/config',
+  authorize('ADMINISTRADOR', 'GERENTE'),
+  asyncHandler(integrationController.updateChErpConfig),
+);

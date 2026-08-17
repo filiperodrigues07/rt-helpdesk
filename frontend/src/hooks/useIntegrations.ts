@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { integrationService, type TotalChatConfigInput } from '@/services/integrationService';
+import { integrationService, type ChErpConfigInput, type TotalChatConfigInput } from '@/services/integrationService';
 
 export function useIntegrations() {
   return useQuery({
@@ -31,5 +31,23 @@ export function useWhatsAppSources(enabled: boolean) {
     queryKey: ['integrations', 'totalchat-whatsapp-sources'],
     queryFn: integrationService.listWhatsAppSources,
     enabled,
+  });
+}
+
+export function useChErpConfig(enabled: boolean) {
+  return useQuery({
+    queryKey: ['integrations', 'ch-erp-config'],
+    queryFn: integrationService.getChErpConfig,
+    enabled,
+  });
+}
+
+export function useUpdateChErpConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ChErpConfigInput) => integrationService.updateChErpConfig(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
+    },
   });
 }

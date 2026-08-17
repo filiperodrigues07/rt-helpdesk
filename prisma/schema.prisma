@@ -68,6 +68,7 @@ enum NotificationType {
 enum IntegrationProvider {
   TOTALCHAT
   KNOWLEDGE_BASE
+  CH_ERP
 }
 
 enum IntegrationStatus {
@@ -418,4 +419,21 @@ model TotalChatConfig {
   updatedAt DateTime @updatedAt
 
   @@map("totalchat_config")
+}
+
+// Configuração da conexão com a base própria do ERP (CH / Integrador BI),
+// usada pra importar cadastros de cliente. Linha única (singleton). token
+// fica criptografado (ver utils/crypto.ts) — nunca é devolvido em texto
+// plano pela API depois de salvo.
+model ChErpConfig {
+  id            String  @id @default(uuid())
+  baseUrl       String?
+  token         String?
+  cnpjPrincipal String?
+  chaveEmpresa  Int     @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ch_erp_config")
 }

@@ -75,3 +75,9 @@ export function useDeleteArticle() {
     },
   });
 }
+
+export function useImportArticlesPreview() {
+  return useMutation({
+    mutationFn: (urls: string[]) => knowledgeBaseService.previewImport(urls),
+  });
+}

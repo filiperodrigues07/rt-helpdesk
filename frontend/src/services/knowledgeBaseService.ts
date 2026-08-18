@@ -11,6 +11,7 @@ export interface KnowledgeBaseArticle {
   status?: KnowledgeBaseArticleStatus;
   categoryId?: number;
   category?: string;
+  author?: string;
   tags?: string[];
   url: string;
   updatedAt: string;
@@ -29,6 +30,14 @@ export interface KnowledgeBaseArticleInput {
   categoryId: number;
   status: KnowledgeBaseArticleStatus;
   tags?: string[];
+}
+
+export interface ImportPreviewItem {
+  url: string;
+  title?: string;
+  summary?: string;
+  content?: string;
+  error?: string;
 }
 
 export const knowledgeBaseService = {
@@ -70,5 +79,10 @@ export const knowledgeBaseService = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return data.data.url;
+  },
+
+  async previewImport(urls: string[]) {
+    const { data } = await api.post<ApiSuccess<ImportPreviewItem[]>>('/knowledge-base/import/preview', { urls });
+    return data.data;
   },
 };

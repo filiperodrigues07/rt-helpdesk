@@ -42,9 +42,16 @@ const EMPTY_FORM = {
 };
 
 function extractErrorMessage(error: unknown, fallback: string) {
-  return (
-    (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? fallback
-  );
+  const apiError = (
+    error as {
+      response?: {
+        data?: { error?: { message?: string; details?: { fieldErrors?: Record<string, string[]> } } };
+      };
+    }
+  )?.response?.data?.error;
+
+  const firstFieldError = Object.values(apiError?.details?.fieldErrors ?? {})[0]?.[0];
+  return firstFieldError ?? apiError?.message ?? fallback;
 }
 
 export function KnowledgeBaseArticleFormPage() {
@@ -205,7 +212,10 @@ export function KnowledgeBaseArticleFormPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="article-category">Categoria *</Label>
-                    <Select value={form.categoryId} onValueChange={(value) => setField('categoryId', value)}>
+                    <Select
+                      value={form.categoryId}
+                      onValueChange={(value) => value && setField('categoryId', value)}
+                    >
                       <SelectTrigger id="article-category">
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
@@ -241,6 +251,8 @@ export function KnowledgeBaseArticleFormPage() {
                   onChange={(value) => setField('content', value)}
                   onUploadImage={knowledgeBaseService.uploadImage}
                   disabled={isSubmitting}
+                  required
+                  minLength={10}
                 />
               </CardContent>
             </Card>

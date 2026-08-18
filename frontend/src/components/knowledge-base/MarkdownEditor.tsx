@@ -78,9 +78,19 @@ interface MarkdownEditorProps {
   onChange: (value: string) => void;
   onUploadImage: (file: File) => Promise<string>;
   disabled?: boolean;
+  required?: boolean;
+  minLength?: number;
 }
 
-export function MarkdownEditor({ id, value, onChange, onUploadImage, disabled }: MarkdownEditorProps) {
+export function MarkdownEditor({
+  id,
+  value,
+  onChange,
+  onUploadImage,
+  disabled,
+  required,
+  minLength,
+}: MarkdownEditorProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = React.useState(false);
@@ -321,6 +331,8 @@ export function MarkdownEditor({ id, value, onChange, onUploadImage, disabled }:
           ref={textareaRef}
           id={id}
           disabled={disabled}
+          required={required}
+          minLength={minLength}
           className={cn('min-h-96 rounded-t-none font-mono text-sm', isDragging && 'ring-2 ring-primary')}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -340,6 +352,8 @@ export function MarkdownEditor({ id, value, onChange, onUploadImage, disabled }:
           <Textarea
             ref={textareaRef}
             disabled={disabled}
+            required={required}
+            minLength={minLength}
             className="min-h-96 rounded-t-none font-mono text-sm"
             value={value}
             onChange={(e) => onChange(e.target.value)}

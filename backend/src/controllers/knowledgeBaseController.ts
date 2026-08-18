@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { knowledgeBaseService } from '../integrations/knowledge-base/service';
+import { articleImporterService } from '../integrations/article-importer/service';
 import { ok, created } from '../utils/apiResponse';
 import { AppError } from '../utils/AppError';
 
@@ -14,6 +15,10 @@ const articleInputSchema = z.object({
 });
 
 const updateArticleSchema = articleInputSchema.partial();
+
+const importPreviewSchema = z.object({
+  urls: z.array(z.string().trim().url('URL inválida')).min(1, 'Informe ao menos uma URL').max(20, 'Máximo de 20 URLs por vez'),
+});
 
 export const knowledgeBaseController = {
   async list(req: Request, res: Response) {
@@ -62,5 +67,11 @@ export const knowledgeBaseController = {
       mimetype: req.file.mimetype,
     });
     return created(res, result);
+  },
+
+  async importPreview(req: Request, res: Response) {
+    const { urls } = importPreviewSchema.parse(req.body);
+    const results = await articleImporterService.importArticlesFromUrls(urls);
+    return ok(res, results);
   },
 };

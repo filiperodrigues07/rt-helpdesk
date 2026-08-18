@@ -25,3 +25,4 @@ knowledgeBaseRoutes.post(
   uploadArticleImage,
   asyncHandler(knowledgeBaseController.uploadImage),
 );
+knowledgeBaseRoutes.post('/import/preview', ...canManageArticles, asyncHandler(knowledgeBaseController.importPreview));

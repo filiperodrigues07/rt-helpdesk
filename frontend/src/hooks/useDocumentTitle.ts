@@ -41,7 +41,7 @@ function resolvePageTitle(pathname: string): string {
   // Qualquer rota com um segundo segmento (id ou slug) é uma tela de detalhe.
   if (segments.length > 1) return DETAIL_LABELS[section] ?? SECTION_LABELS[section] ?? 'Detalhes';
 
-  return SECTION_LABELS[section] ?? SECTION_LABELS[''];
+  return SECTION_LABELS[section] ?? 'Página não encontrada';
 }
 
 /**

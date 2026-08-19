@@ -442,3 +442,34 @@ export interface CustomerImportResult {
   created: number;
   skipped: { row: number; name: string; reason?: string }[];
 }
+
+export interface SuperAdminUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface SuperAdminLoginResponse {
+  token: string;
+  superAdmin: SuperAdminUser;
+}
+
+export interface TenantListItem {
+  id: string;
+  name: string;
+  slug: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface CreateTenantInput {
+  tenantName: string;
+  tenantSlug: string;
+  adminName: string;
+  adminEmail: string;
+  adminPassword: string;
+}
+
+export interface CreateTenantResult extends TenantListItem {
+  adminUser: { id: string; name: string; email: string };
+}

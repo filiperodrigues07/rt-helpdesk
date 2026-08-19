@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma';
+import { tenantPrisma } from '../utils/tenantPrisma';
+import { tenantContext } from '../utils/tenantContext';
 
 export interface CustomerListFilters {
   search?: string;
@@ -30,73 +32,78 @@ export const customerRepository = {
     const where = buildWhere(filters);
 
     const [items, total] = await Promise.all([
-      prisma.customer.findMany({
+      tenantPrisma.customer.findMany({
         where,
         include: { _count: { select: { tickets: true, appointments: true } } },
         orderBy: { companyName: 'asc' },
         skip: (options.page - 1) * options.pageSize,
         take: options.pageSize,
       }),
-      prisma.customer.count({ where }),
+      tenantPrisma.customer.count({ where }),
     ]);
 
     return { items, total };
   },
 
   listMinimal() {
-    return prisma.customer.findMany({
+    return tenantPrisma.customer.findMany({
       select: { id: true, companyName: true, tradeName: true, city: true, phone: true },
       orderBy: { companyName: 'asc' },
     });
   },
 
   findById(id: string) {
-    return prisma.customer.findUnique({
+    return tenantPrisma.customer.findUnique({
       where: { id },
       include: { contacts: true },
     });
   },
 
   findByCnpj(cnpj: string) {
-    return prisma.customer.findUnique({ where: { cnpj } });
+    // cnpj só é único junto de tenantId agora — findUnique exige o nome
+    // exato do compound key, então usamos findFirst.
+    return tenantPrisma.customer.findFirst({ where: { cnpj } });
   },
 
   create(data: Prisma.CustomerCreateInput) {
-    return prisma.customer.create({ data });
+    return tenantPrisma.customer.create({ data });
   },
 
   update(id: string, data: Prisma.CustomerUpdateInput) {
-    return prisma.customer.update({ where: { id }, data });
+    return tenantPrisma.customer.update({ where: { id }, data });
   },
 
   countTickets(id: string) {
-    return prisma.ticket.count({ where: { customerId: id } });
+    return tenantPrisma.ticket.count({ where: { customerId: id } });
   },
 
   async delete(id: string) {
-    await prisma.customer.delete({ where: { id } });
+    await tenantPrisma.customer.delete({ where: { id } });
   },
 
   async getIndicators(customerId: string) {
+    const tenantId = tenantContext.getTenantId();
+
     const [byStatus, resolvedAgg, byAssigneeRaw, appointments, recentTickets] = await Promise.all([
-      prisma.ticket.groupBy({ by: ['status'], where: { customerId }, _count: { _all: true } }),
+      tenantPrisma.ticket.groupBy({ by: ['status'], where: { customerId }, _count: { _all: true } }),
+      // $queryRaw não passa pela extension de tenant scope — parâmetro (não interpolação de string) + filtro manual.
       prisma.$queryRaw<{ avg_hours: number | null }[]>`
         SELECT AVG(EXTRACT(EPOCH FROM ("resolvedAt" - "createdAt")) / 3600.0) AS avg_hours
         FROM "tickets"
-        WHERE "customerId" = ${customerId} AND "resolvedAt" IS NOT NULL
+        WHERE "customerId" = ${customerId} AND "resolvedAt" IS NOT NULL AND "tenantId" = ${tenantId}
       `,
-      prisma.ticket.groupBy({
+      tenantPrisma.ticket.groupBy({
         by: ['assigneeId'],
         where: { customerId, assigneeId: { not: null } },
         _count: { _all: true },
       }),
-      prisma.appointment.findMany({
+      tenantPrisma.appointment.findMany({
         where: { customerId },
         orderBy: { startsAt: 'desc' },
         take: 10,
         include: { assignee: { select: { id: true, name: true, avatarUrl: true } } },
       }),
-      prisma.ticket.findMany({
+      tenantPrisma.ticket.findMany({
         where: { customerId },
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -109,7 +116,7 @@ export const customerRepository = {
 
     const assigneeIds = byAssigneeRaw.map((row) => row.assigneeId).filter((id): id is string => !!id);
     const assignees = assigneeIds.length
-      ? await prisma.user.findMany({ where: { id: { in: assigneeIds } }, select: { id: true, name: true, avatarUrl: true } })
+      ? await tenantPrisma.user.findMany({ where: { id: { in: assigneeIds } }, select: { id: true, name: true, avatarUrl: true } })
       : [];
     const assigneeById = new Map(assignees.map((user) => [user.id, user]));
 

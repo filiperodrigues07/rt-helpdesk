@@ -22,15 +22,24 @@ const SLA_HOURS: Record<TicketPriority, number> = {
 async function main() {
   console.log('Iniciando seed do RT HELPDESK...');
 
+  // ---- Tenant ----
+  // Único tenant real por enquanto (fundação multi-tenant — ver plano em
+  // prisma/migrations/20260818140000_add_tenant). Tudo abaixo pertence a ele.
+  const tenant = await prisma.tenant.upsert({
+    where: { slug: 'principal' },
+    update: {},
+    create: { name: 'Empresa Principal', slug: 'principal' },
+  });
+
   // ---- Roles ----
   const roleNames: RoleName[] = ['ADMINISTRADOR', 'GERENTE', 'SUPORTE', 'IMPLANTACAO', 'VISUALIZACAO'];
   const roles: Record<RoleName, { id: string }> = {} as Record<RoleName, { id: string }>;
 
   for (const name of roleNames) {
     const role = await prisma.role.upsert({
-      where: { name },
+      where: { tenantId_name: { tenantId: tenant.id, name } },
       update: {},
-      create: { name },
+      create: { name, tenantId: tenant.id },
     });
     roles[name] = role;
   }
@@ -66,16 +75,19 @@ async function main() {
   // ADMINISTRADOR sempre tem acesso total — não é reconfigurável (trava de segurança
   // pra nunca ficar sem ninguém conseguindo acessar a tela de Permissões).
   await prisma.role.update({
-    where: { name: 'ADMINISTRADOR' },
+    where: { tenantId_name: { tenantId: tenant.id, name: 'ADMINISTRADOR' } },
     data: { permissions: { set: defaultRoleScreens.ADMINISTRADOR.map((key) => ({ id: permissionByKey.get(key)!.id })) } },
   });
 
   for (const [roleName, keys] of Object.entries(defaultRoleScreens) as [RoleName, string[]][]) {
     if (roleName === 'ADMINISTRADOR') continue;
-    const role = await prisma.role.findUnique({ where: { name: roleName }, include: { permissions: true } });
+    const role = await prisma.role.findUnique({
+      where: { tenantId_name: { tenantId: tenant.id, name: roleName } },
+      include: { permissions: true },
+    });
     if (!role || role.permissions.length > 0) continue; // já configurado — não sobrescreve
     await prisma.role.update({
-      where: { name: roleName },
+      where: { tenantId_name: { tenantId: tenant.id, name: roleName } },
       data: { permissions: { set: keys.map((key) => ({ id: permissionByKey.get(key)!.id })) } },
     });
   }
@@ -83,9 +95,9 @@ async function main() {
   // ---- SLA Rules ----
   for (const [priority, hours] of Object.entries(SLA_HOURS) as [TicketPriority, number][]) {
     await prisma.slaRule.upsert({
-      where: { priority },
+      where: { tenantId_priority: { tenantId: tenant.id, priority } },
       update: { responseTimeMin: hours * 60 },
-      create: { priority, responseTimeMin: hours * 60 },
+      create: { priority, responseTimeMin: hours * 60, tenantId: tenant.id },
     });
   }
   const slaRules = await prisma.slaRule.findMany();
@@ -95,14 +107,26 @@ async function main() {
   const categoryNames = ['Fiscal', 'Estoque', 'Financeiro', 'Implantação', 'Infraestrutura', 'Treinamento'];
   const categories = [];
   for (const name of categoryNames) {
-    categories.push(await prisma.category.upsert({ where: { name }, update: {}, create: { name } }));
+    categories.push(
+      await prisma.category.upsert({
+        where: { tenantId_name: { tenantId: tenant.id, name } },
+        update: {},
+        create: { name, tenantId: tenant.id },
+      }),
+    );
   }
 
   // ---- Tags ----
   const tagNames = ['urgente', 'nfc-e', 'sefaz', 'erp', 'financeiro', 'onboarding', 'bug', 'duvida'];
   const tags = [];
   for (const name of tagNames) {
-    tags.push(await prisma.tag.upsert({ where: { name }, update: {}, create: { name } }));
+    tags.push(
+      await prisma.tag.upsert({
+        where: { tenantId_name: { tenantId: tenant.id, name } },
+        update: {},
+        create: { name, tenantId: tenant.id },
+      }),
+    );
   }
 
   // ---- Users ----
@@ -127,6 +151,7 @@ async function main() {
         passwordHash,
         jobTitle: data.jobTitle,
         roleId: roles[data.role].id,
+        tenantId: tenant.id,
       },
     });
     users.push(user);
@@ -143,6 +168,7 @@ async function main() {
       passwordHash: ownerPasswordHash,
       jobTitle: 'Administrador',
       roleId: roles.ADMINISTRADOR.id,
+      tenantId: tenant.id,
     },
   });
   users.push(owner);
@@ -164,12 +190,13 @@ async function main() {
   const customers = [];
   for (const data of customersData) {
     const customer = await prisma.customer.upsert({
-      where: { cnpj: data.cnpj },
+      where: { tenantId_cnpj: { tenantId: tenant.id, cnpj: data.cnpj } },
       update: {},
       create: {
         ...data,
         email: `contato@${data.tradeName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.br`,
         phone: '(11) 4000-0000',
+        tenantId: tenant.id,
       },
     });
     customers.push(customer);
@@ -237,6 +264,7 @@ async function main() {
           slaRuleId: slaRule?.id,
           slaDueAt,
           createdAt,
+          tenantId: tenant.id,
           tags: {
             create: [{ tagId: tags[i % tags.length].id }],
           },
@@ -320,6 +348,7 @@ async function main() {
           assigneeId: users[i % users.length].id,
           startsAt,
           endsAt,
+          tenantId: tenant.id,
         },
       });
     }
@@ -327,22 +356,24 @@ async function main() {
 
   // ---- Integrations ----
   await prisma.integration.upsert({
-    where: { provider: IntegrationProvider.TOTALCHAT },
+    where: { tenantId_provider: { tenantId: tenant.id, provider: IntegrationProvider.TOTALCHAT } },
     update: {},
     create: {
       provider: IntegrationProvider.TOTALCHAT,
       status: IntegrationStatus.AGUARDANDO_CONFIGURACAO,
       notes: 'Aguardando documentação oficial da API do TotalChat.',
+      tenantId: tenant.id,
     },
   });
 
   await prisma.integration.upsert({
-    where: { provider: IntegrationProvider.KNOWLEDGE_BASE },
+    where: { tenantId_provider: { tenantId: tenant.id, provider: IntegrationProvider.KNOWLEDGE_BASE } },
     update: {},
     create: {
       provider: IntegrationProvider.KNOWLEDGE_BASE,
       status: IntegrationStatus.AGUARDANDO_CONFIGURACAO,
       notes: 'API da Base de Conhecimento ainda não configurada. Utilizando dados mockados.',
+      tenantId: tenant.id,
     },
   });
 

@@ -1,5 +1,5 @@
 import { Prisma, TicketPriority, TicketStatus } from '@prisma/client';
-import { prisma } from '../utils/prisma';
+import { tenantPrisma as prisma } from '../utils/tenantPrisma';
 
 export interface TicketListFilters {
   status?: TicketStatus;
@@ -97,7 +97,9 @@ export const ticketRepository = {
   },
 
   findSlaRuleByPriority(priority: TicketPriority) {
-    return prisma.slaRule.findUnique({ where: { priority } });
+    // priority só é único junto de tenantId agora — findUnique exige o nome
+    // exato do compound key, então usamos findFirst.
+    return prisma.slaRule.findFirst({ where: { priority } });
   },
 
   create(data: Prisma.TicketCreateInput) {

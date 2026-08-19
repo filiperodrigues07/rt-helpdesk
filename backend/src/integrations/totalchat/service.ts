@@ -332,7 +332,11 @@ async function processContactMessages(
     return { action: 'updated' as const, ticketId: existingTicket.id };
   }
 
-  const slaRule = await prisma.slaRule.findUnique({ where: { priority: 'NORMAL' } });
+  // priority só é único junto de tenantId agora; este fluxo ainda roda fora de
+  // contexto de tenant (ver totalChatConfigRepository) — como hoje só existe
+  // um tenant real, findFirst funciona, mas isso precisa ser revisitado quando
+  // a integração TotalChat virar de verdade por-tenant (Fase 2).
+  const slaRule = await prisma.slaRule.findFirst({ where: { priority: 'NORMAL' } });
   const createdAt = new Date();
   const slaDueAt = slaRule ? new Date(createdAt.getTime() + slaRule.responseTimeMin * 60 * 1000) : null;
 

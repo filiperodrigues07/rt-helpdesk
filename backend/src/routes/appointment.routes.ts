@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { appointmentController } from '../controllers/appointmentController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { authenticate } from '../middlewares/auth';
+import { tenantScope } from '../middlewares/tenantScope';
 import { requireScreenPermission } from '../middlewares/permission';
 
 export const appointmentRoutes = Router();
 
-appointmentRoutes.use(authenticate, requireScreenPermission('screen.agenda'));
+appointmentRoutes.use(authenticate, tenantScope, requireScreenPermission('screen.agenda'));
 appointmentRoutes.get('/', asyncHandler(appointmentController.list));
 appointmentRoutes.post('/', asyncHandler(appointmentController.create));
 appointmentRoutes.get('/:id', asyncHandler(appointmentController.getById));

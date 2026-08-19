@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { prisma } from '../utils/prisma';
+import { tenantPrisma as prisma } from '../utils/tenantPrisma';
 
 export interface AppointmentListFilters {
   start: Date;

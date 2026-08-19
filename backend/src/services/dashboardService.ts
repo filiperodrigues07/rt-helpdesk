@@ -1,4 +1,6 @@
 import { prisma } from '../utils/prisma';
+import { tenantPrisma } from '../utils/tenantPrisma';
+import { tenantContext } from '../utils/tenantContext';
 
 // Espelha o limite de "at risk" usado no badge por chamado (frontend/src/components/tickets/SlaIndicator.tsx).
 const SLA_RISK_WINDOW_MIN = 4 * 60;
@@ -35,6 +37,7 @@ export const dashboardService = {
     const slaRiskThreshold = new Date(now.getTime() + SLA_RISK_WINDOW_MIN * 60 * 1000);
     const periodStart = new Date(startOfDay);
     periodStart.setDate(periodStart.getDate() - (PERIOD_DAYS - 1));
+    const tenantId = tenantContext.getTenantId();
 
     const [
       byStatus,
@@ -47,9 +50,11 @@ export const dashboardService = {
       avgResolutionRows,
       byAssigneeRaw,
     ] = await Promise.all([
-      prisma.ticket.groupBy({ by: ['status'], _count: { _all: true } }),
-      prisma.ticket.groupBy({ by: ['priority'], _count: { _all: true } }),
-      prisma.ticketHistory.findMany({
+      tenantPrisma.ticket.groupBy({ by: ['status'], _count: { _all: true } }),
+      tenantPrisma.ticket.groupBy({ by: ['priority'], _count: { _all: true } }),
+      // TicketHistory não tem tenantId próprio (escopado via Ticket) — filtro manual pela relação.
+      tenantPrisma.ticketHistory.findMany({
+        where: { ticket: { tenantId } },
         take: 10,
         orderBy: { createdAt: 'desc' },
         include: {
@@ -57,23 +62,24 @@ export const dashboardService = {
           ticket: { select: { id: true, number: true, title: true } },
         },
       }),
-      prisma.ticket.count({
+      tenantPrisma.ticket.count({
         where: { status: { in: ['RESOLVIDO', 'ENCERRADO'] }, resolvedAt: { gte: startOfDay } },
       }),
-      prisma.ticket.count({
+      tenantPrisma.ticket.count({
         where: { status: { notIn: ['RESOLVIDO', 'ENCERRADO'] }, slaDueAt: { lte: slaRiskThreshold } },
       }),
+      // $queryRaw não passa pela extension de tenant scope — filtro manual.
       prisma.$queryRaw<DailyCountRow[]>`
         SELECT date_trunc('day', "createdAt") AS day, COUNT(*)::bigint AS count
         FROM "tickets"
-        WHERE "createdAt" >= ${periodStart}
+        WHERE "createdAt" >= ${periodStart} AND "tenantId" = ${tenantId}
         GROUP BY day
         ORDER BY day ASC
       `,
       prisma.$queryRaw<DailyCountRow[]>`
         SELECT date_trunc('day', "resolvedAt") AS day, COUNT(*)::bigint AS count
         FROM "tickets"
-        WHERE "resolvedAt" IS NOT NULL AND "resolvedAt" >= ${periodStart}
+        WHERE "resolvedAt" IS NOT NULL AND "resolvedAt" >= ${periodStart} AND "tenantId" = ${tenantId}
         GROUP BY day
         ORDER BY day ASC
       `,
@@ -81,11 +87,11 @@ export const dashboardService = {
         SELECT date_trunc('day', "resolvedAt") AS day,
                AVG(EXTRACT(EPOCH FROM ("resolvedAt" - "createdAt")) / 3600.0) AS avg_hours
         FROM "tickets"
-        WHERE "resolvedAt" IS NOT NULL AND "resolvedAt" >= ${periodStart}
+        WHERE "resolvedAt" IS NOT NULL AND "resolvedAt" >= ${periodStart} AND "tenantId" = ${tenantId}
         GROUP BY day
         ORDER BY day ASC
       `,
-      prisma.ticket.groupBy({ by: ['assigneeId'], _count: { _all: true } }),
+      tenantPrisma.ticket.groupBy({ by: ['assigneeId'], _count: { _all: true } }),
     ]);
 
     const statusCount = (status: string) =>
@@ -116,7 +122,7 @@ export const dashboardService = {
 
     const assigneeIds = byAssigneeRaw.map((row) => row.assigneeId).filter((id): id is string => !!id);
     const assignees = assigneeIds.length
-      ? await prisma.user.findMany({ where: { id: { in: assigneeIds } }, select: { id: true, name: true } })
+      ? await tenantPrisma.user.findMany({ where: { id: { in: assigneeIds } }, select: { id: true, name: true } })
       : [];
     const assigneeNameById = new Map(assignees.map((user) => [user.id, user.name]));
 

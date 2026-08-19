@@ -1,5 +1,5 @@
 import { RoleName } from '@prisma/client';
-import { prisma } from '../utils/prisma';
+import { tenantPrisma as prisma } from '../utils/tenantPrisma';
 
 export const permissionRepository = {
   listPermissions() {

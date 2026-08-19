@@ -14,8 +14,13 @@ import { reportRoutes } from './report.routes';
 import { notificationRoutes } from './notification.routes';
 import { settingsRoutes } from './settings.routes';
 import { permissionRoutes } from './permission.routes';
+import { superAdminAuthRoutes } from './superAdminAuth.routes';
+import { tenantAdminRoutes } from './tenantAdmin.routes';
 
 export const apiRouter = Router();
+
+apiRouter.use('/super-admin/auth', superAdminAuthRoutes);
+apiRouter.use('/super-admin/tenants', tenantAdminRoutes);
 
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/users', userRoutes);

@@ -1,5 +1,7 @@
 import { Prisma, TicketPriority, TicketStatus } from '@prisma/client';
 import { prisma } from '../utils/prisma';
+import { tenantPrisma } from '../utils/tenantPrisma';
+import { tenantContext } from '../utils/tenantContext';
 
 export interface ReportFilters {
   start?: Date;
@@ -34,9 +36,10 @@ function buildWhere(filters: ReportFilters): Prisma.TicketWhereInput {
 export const reportRepository = {
   async summary(filters: ReportFilters) {
     const where = buildWhere(filters);
+    const tenantId = tenantContext.getTenantId();
 
     const resolvedFilterSql = Prisma.sql`
-      "resolvedAt" IS NOT NULL
+      "resolvedAt" IS NOT NULL AND "tenantId" = ${tenantId}
       ${filters.start ? Prisma.sql`AND "createdAt" >= ${filters.start}` : Prisma.empty}
       ${filters.end ? Prisma.sql`AND "createdAt" <= ${filters.end}` : Prisma.empty}
       ${filters.customerId ? Prisma.sql`AND "customerId" = ${filters.customerId}` : Prisma.empty}
@@ -47,8 +50,9 @@ export const reportRepository = {
     `;
 
     const [total, byStatus, resolutionAgg, byCustomerRaw, byCategoryRaw, byAssigneeRaw] = await Promise.all([
-      prisma.ticket.count({ where }),
-      prisma.ticket.groupBy({ by: ['status'], where, _count: { _all: true } }),
+      tenantPrisma.ticket.count({ where }),
+      tenantPrisma.ticket.groupBy({ by: ['status'], where, _count: { _all: true } }),
+      // $queryRaw não passa pela extension de tenant scope — filtro manual (resolvedFilterSql acima).
       prisma.$queryRaw<{ avg_hours: number | null; within_sla: bigint; sla_total: bigint }[]>`
         SELECT
           AVG(EXTRACT(EPOCH FROM ("resolvedAt" - "createdAt")) / 3600.0) AS avg_hours,
@@ -57,9 +61,9 @@ export const reportRepository = {
         FROM "tickets"
         WHERE ${resolvedFilterSql}
       `,
-      prisma.ticket.groupBy({ by: ['customerId'], where, _count: { _all: true } }),
-      prisma.ticket.groupBy({ by: ['categoryId'], where, _count: { _all: true } }),
-      prisma.ticket.groupBy({ by: ['assigneeId'], where, _count: { _all: true } }),
+      tenantPrisma.ticket.groupBy({ by: ['customerId'], where, _count: { _all: true } }),
+      tenantPrisma.ticket.groupBy({ by: ['categoryId'], where, _count: { _all: true } }),
+      tenantPrisma.ticket.groupBy({ by: ['assigneeId'], where, _count: { _all: true } }),
     ]);
 
     const resolvedCount = byStatus
@@ -73,13 +77,13 @@ export const reportRepository = {
 
     const [customers, categories, assignees] = await Promise.all([
       customerIds.length
-        ? prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, companyName: true, tradeName: true } })
+        ? tenantPrisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, companyName: true, tradeName: true } })
         : [],
       categoryIds.length
-        ? prisma.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true, name: true } })
+        ? tenantPrisma.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true, name: true } })
         : [],
       assigneeIds.length
-        ? prisma.user.findMany({ where: { id: { in: assigneeIds } }, select: { id: true, name: true } })
+        ? tenantPrisma.user.findMany({ where: { id: { in: assigneeIds } }, select: { id: true, name: true } })
         : [],
     ]);
 
@@ -127,7 +131,7 @@ export const reportRepository = {
 
   async listForExport(filters: ReportFilters) {
     const where = buildWhere(filters);
-    return prisma.ticket.findMany({
+    return tenantPrisma.ticket.findMany({
       where,
       include: {
         customer: { select: { companyName: true, tradeName: true } },

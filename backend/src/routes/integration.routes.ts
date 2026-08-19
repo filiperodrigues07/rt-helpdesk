@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { integrationController } from '../controllers/integrationController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { authenticate, authorize } from '../middlewares/auth';
+import { tenantScope } from '../middlewares/tenantScope';
 import { requireScreenPermission } from '../middlewares/permission';
 
 export const integrationRoutes = Router();
 
-integrationRoutes.use(authenticate);
+integrationRoutes.use(authenticate, tenantScope);
 
 // Usado pelo formulário de usuário (Equipe) para vincular um atendente do
 // TotalChat — por isso não fica atrás de screen.configuracoes.

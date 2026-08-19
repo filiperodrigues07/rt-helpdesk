@@ -8,6 +8,7 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   role: RoleName;
+  tenantId: string;
 }
 
 declare global {
@@ -29,10 +30,16 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
   const token = header.replace('Bearer ', '');
 
   try {
-    const payload = jwt.verify(token, env.jwtSecret) as AuthenticatedUser;
+    const payload = jwt.verify(token, env.jwtSecret) as AuthenticatedUser & { scope?: string };
+    // Defesa em profundidade: um token do realm de super admin nunca deve ser
+    // aceito aqui — payload.tenantId viria undefined e quebraria tenantScope.
+    if (payload.scope === 'super-admin') {
+      throw new AppError('Token de autenticação inválido ou expirado', 401);
+    }
     req.user = payload;
     next();
-  } catch {
+  } catch (error) {
+    if (error instanceof AppError) throw error;
     throw new AppError('Token de autenticação inválido ou expirado', 401);
   }
 }

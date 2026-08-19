@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { customerController } from '../controllers/customerController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { authenticate } from '../middlewares/auth';
+import { tenantScope } from '../middlewares/tenantScope';
 import { requireScreenPermission } from '../middlewares/permission';
 
 export const customerRoutes = Router();
 
-customerRoutes.use(authenticate);
+customerRoutes.use(authenticate, tenantScope);
 // Usado por dropdowns em outras telas (Chamados, Agenda) — não fica atrás do
 // acesso à tela Clientes, senão quebra a criação de chamado/evento pra quem
 // não tem essa tela liberada.

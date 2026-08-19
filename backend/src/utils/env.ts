@@ -39,4 +39,8 @@ export const env = {
     apiUrl: process.env.KNOWLEDGE_BASE_API_URL || undefined,
     apiKey: process.env.KNOWLEDGE_BASE_API_KEY || undefined,
   },
+  superAdmin: {
+    bootstrapEmail: process.env.SUPER_ADMIN_EMAIL || undefined,
+    bootstrapPassword: process.env.SUPER_ADMIN_PASSWORD || undefined,
+  },
 };

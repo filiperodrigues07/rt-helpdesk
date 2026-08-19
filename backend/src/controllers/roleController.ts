@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '../utils/prisma';
+import { tenantPrisma as prisma } from '../utils/tenantPrisma';
 import { ok } from '../utils/apiResponse';
 
 export const roleController = {

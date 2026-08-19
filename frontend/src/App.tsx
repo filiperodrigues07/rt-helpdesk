@@ -2,14 +2,19 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { SuperAdminAuthProvider } from '@/contexts/SuperAdminAuthContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/toaster';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { SuperAdminProtectedRoute } from '@/components/SuperAdminProtectedRoute';
 import { ScreenRoute } from '@/components/ScreenRoute';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SCREEN_PERMISSIONS } from '@/utils/screenPermissions';
 import { AppLayout } from '@/layouts/AppLayout';
+import { SuperAdminLayout } from '@/layouts/SuperAdminLayout';
 import { LoginPage } from '@/pages/LoginPage';
+import { SuperAdminLoginPage } from '@/pages/super-admin/SuperAdminLoginPage';
+import { SuperAdminTenantsPage } from '@/pages/super-admin/SuperAdminTenantsPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { TicketsPage } from '@/pages/TicketsPage';
@@ -42,10 +47,18 @@ export function App() {
       <ThemeProvider>
         <ErrorBoundary>
           <AuthProvider>
+            <SuperAdminAuthProvider>
             <TooltipProvider delayDuration={200}>
               <BrowserRouter>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/super-admin/login" element={<SuperAdminLoginPage />} />
+
+                  <Route element={<SuperAdminProtectedRoute />}>
+                    <Route element={<SuperAdminLayout />}>
+                      <Route path="/super-admin" element={<SuperAdminTenantsPage />} />
+                    </Route>
+                  </Route>
 
                   <Route element={<ProtectedRoute />}>
                     <Route element={<AppLayout />}>
@@ -95,6 +108,7 @@ export function App() {
               </BrowserRouter>
               <Toaster />
             </TooltipProvider>
+            </SuperAdminAuthProvider>
           </AuthProvider>
         </ErrorBoundary>
       </ThemeProvider>

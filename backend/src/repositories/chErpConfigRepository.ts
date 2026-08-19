@@ -1,5 +1,7 @@
 import { prisma } from '../utils/prisma';
 
+// Ainda no client global (não tenantPrisma) — mesmo motivo do
+// totalChatConfigRepository: também é usado fora de requisição HTTP.
 // Configuração é uma linha única (singleton) — sempre a mais recente criada.
 async function getRow() {
   return prisma.chErpConfig.findFirst({ orderBy: { createdAt: 'asc' } });

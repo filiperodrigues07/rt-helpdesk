@@ -8,6 +8,60 @@ datasource db {
 }
 
 // ==========================================================
+// TENANT
+// ==========================================================
+
+// Empresa cliente da plataforma. Fundação da multi-locação: cada linha das
+// tabelas "por tenant" abaixo pertence a exatamente um Tenant. Nessa etapa
+// a coluna tenantId só existe no schema — nenhuma query ainda filtra por
+// ela (isso vem numa etapa seguinte, via Prisma Client Extension). Os campos
+// tenantId têm @default() apontando pro tenant único de hoje só pra manter
+// os repositórios existentes compilando/funcionando sem alteração — remover
+// esse default quando os repositórios passarem a preencher tenantId
+// explicitamente a partir do client escopado por request.
+model Tenant {
+  id     String  @id @default(uuid())
+  name   String
+  slug   String  @unique
+  active Boolean @default(true)
+
+  users            User[]
+  roles            Role[]
+  customers        Customer[]
+  categories       Category[]
+  tags             Tag[]
+  slaRules         SlaRule[]
+  tickets          Ticket[]
+  appointments     Appointment[]
+  integrations     Integration[]
+  totalChatConfigs TotalChatConfig[]
+  chErpConfigs     ChErpConfig[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tenants")
+}
+
+// Conta do dono da plataforma (operador da SaaS, não de um tenant). Fica
+// deliberadamente FORA do sistema Tenant/User/Role: sem tenantId, sem
+// RoleName, não participa da matriz de permissões por tela. Autenticação
+// completamente separada — ver middlewares/superAdminAuth.ts. Nunca deve
+// entrar em TENANT_SCOPED_MODELS (utils/tenantPrisma.ts): não tem tenantId,
+// a extension quebraria tentando injetar um.
+model SuperAdmin {
+  id           String @id @default(uuid())
+  name         String
+  email        String @unique
+  passwordHash String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("super_admins")
+}
+
+// ==========================================================
 // ENUMS
 // ==========================================================
 
@@ -83,20 +137,28 @@ enum IntegrationStatus {
 
 model Role {
   id          String       @id @default(uuid())
-  name        RoleName     @unique
+  name        RoleName
   description String?
   permissions Permission[]
   users       User[]
 
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Cada tenant tem sua própria linha por RoleName (ver TENANT no topo do
+  // arquivo) — precisa ser composta com tenantId pra dois tenants poderem
+  // ter, cada um, um ADMINISTRADOR/GERENTE/etc próprio.
+  @@unique([tenantId, name])
+  @@index([tenantId])
   @@map("roles")
 }
 
 model Permission {
-  id          String @id @default(uuid())
-  key         String @unique
+  id          String  @id @default(uuid())
+  key         String  @unique
   description String?
   roles       Role[]
 
@@ -107,30 +169,35 @@ model Permission {
 }
 
 model User {
-  id           String   @id @default(uuid())
+  id           String  @id @default(uuid())
   name         String
-  email        String   @unique
+  email        String  @unique
   passwordHash String
   jobTitle     String?
   avatarUrl    String?
-  active       Boolean  @default(true)
+  active       Boolean @default(true)
 
   // Vínculo opcional com o atendente correspondente no TotalChat (id numérico da API).
-  totalchatAttendantId String? @unique
+  totalchatAttendantId String?
 
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
-  assignedTickets        Ticket[]           @relation("TicketAssignee")
-  createdTickets         Ticket[]           @relation("TicketCreator")
-  ticketComments         TicketComment[]
-  ticketHistoryEntries   TicketHistory[]
-  appointments           Appointment[]
-  notifications          Notification[]
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  assignedTickets      Ticket[]        @relation("TicketAssignee")
+  createdTickets       Ticket[]        @relation("TicketCreator")
+  ticketComments       TicketComment[]
+  ticketHistoryEntries TicketHistory[]
+  appointments         Appointment[]
+  notifications        Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, totalchatAttendantId])
+  @@index([tenantId])
   @@map("users")
 }
 
@@ -139,14 +206,17 @@ model User {
 // ==========================================================
 
 model Customer {
-  id             String  @id @default(uuid())
-  companyName    String
-  tradeName      String?
-  cnpj           String? @unique
-  phone          String?
-  email          String?
-  city           String?
-  notes          String?
+  id          String  @id @default(uuid())
+  companyName String
+  tradeName   String?
+  cnpj        String?
+  phone       String?
+  email       String?
+  city        String?
+  notes       String?
+
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   contacts     CustomerContact[]
   tickets      Ticket[]
@@ -155,12 +225,14 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, cnpj])
+  @@index([tenantId])
   @@map("customers")
 }
 
 // Estrutura preparada para futuramente relacionar o contato à conversa do TotalChat.
 model CustomerContact {
-  id         String  @id @default(uuid())
+  id         String   @id @default(uuid())
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
@@ -182,24 +254,34 @@ model CustomerContact {
 
 model Category {
   id          String   @id @default(uuid())
-  name        String   @unique
+  name        String
   description String?
   tickets     Ticket[]
+
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, name])
+  @@index([tenantId])
   @@map("categories")
 }
 
 model Tag {
-  id      String     @id @default(uuid())
-  name    String     @unique
+  id      String      @id @default(uuid())
+  name    String
   tickets TicketTag[]
+
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, name])
+  @@index([tenantId])
   @@map("tags")
 }
 
@@ -219,13 +301,18 @@ model TicketTag {
 
 model SlaRule {
   id              String         @id @default(uuid())
-  priority        TicketPriority @unique
+  priority        TicketPriority
   responseTimeMin Int
   tickets         Ticket[]
+
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, priority])
+  @@index([tenantId])
   @@map("sla_rules")
 }
 
@@ -234,8 +321,8 @@ model SlaRule {
 // ==========================================================
 
 model Ticket {
-  id          String         @id @default(uuid())
-  number      Int            @unique @default(autoincrement())
+  id          String @id @default(uuid())
+  number      Int    @unique @default(autoincrement())
   title       String
   description String
 
@@ -256,14 +343,17 @@ model Ticket {
   origin   TicketOrigin   @default(MANUAL)
 
   slaRuleId String?
-  slaRule   SlaRule? @relation(fields: [slaRuleId], references: [id])
+  slaRule   SlaRule?  @relation(fields: [slaRuleId], references: [id])
   slaDueAt  DateTime?
+
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   // Campos estruturais para futura integração com o TotalChat.
   // Não preenchidos até que a integração real seja implementada.
-  totalchatConversationId String?
-  totalchatMessageId      String?
-  totalchatContactId      String?
+  totalchatConversationId  String?
+  totalchatMessageId       String?
+  totalchatContactId       String?
   totalchatConversationUrl String?
 
   resolvedProblem String?
@@ -282,6 +372,7 @@ model Ticket {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("tickets")
 }
 
@@ -291,7 +382,7 @@ model TicketComment {
   ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   authorId String?
-  author   User?  @relation(fields: [authorId], references: [id])
+  author   User?   @relation(fields: [authorId], references: [id])
 
   content    String
   visibility CommentVisibility @default(INTERNO)
@@ -308,12 +399,12 @@ model TicketHistory {
   ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   authorId String?
-  author   User?  @relation(fields: [authorId], references: [id])
+  author   User?   @relation(fields: [authorId], references: [id])
 
-  action      String
-  fieldName   String?
-  oldValue    String?
-  newValue    String?
+  action    String
+  fieldName String?
+  oldValue  String?
+  newValue  String?
 
   createdAt DateTime @default(now())
 
@@ -325,9 +416,9 @@ model TicketAttachment {
   ticketId String
   ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  fileName String
-  fileUrl  String
-  mimeType String?
+  fileName  String
+  fileUrl   String
+  mimeType  String?
   sizeBytes Int?
 
   createdAt DateTime @default(now())
@@ -356,9 +447,13 @@ model Appointment {
   startsAt DateTime
   endsAt   DateTime
 
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("appointments")
 }
 
@@ -367,9 +462,9 @@ model Appointment {
 // ==========================================================
 
 model Notification {
-  id     String            @id @default(uuid())
+  id     String @id @default(uuid())
   userId String
-  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   type    NotificationType
   title   String
@@ -392,13 +487,18 @@ model Notification {
 
 model Integration {
   id       String              @id @default(uuid())
-  provider IntegrationProvider @unique
+  provider IntegrationProvider
   status   IntegrationStatus   @default(AGUARDANDO_CONFIGURACAO)
   notes    String?
+
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, provider])
+  @@index([tenantId])
   @@map("integrations")
 }
 
@@ -406,18 +506,22 @@ model Integration {
 // Linha única (singleton). password fica criptografado (ver utils/crypto.ts) —
 // nunca é devolvido em texto plano pela API depois de salvo.
 model TotalChatConfig {
-  id                  String   @id @default(uuid())
+  id                  String  @id @default(uuid())
   apiUrl              String?
   username            String?
   password            String?
   connectionId        Int?
   whatsappCloudApiFid Int?
-  pollingEnabled      Boolean  @default(false)
-  pollIntervalSeconds Int      @default(60)
+  pollingEnabled      Boolean @default(false)
+  pollIntervalSeconds Int     @default(60)
+
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("totalchat_config")
 }
 
@@ -432,8 +536,12 @@ model ChErpConfig {
   cnpjPrincipal String?
   chaveEmpresa  Int     @default(1)
 
+  tenantId String @default("4994caa6-429e-47ae-b6db-c82fe6e0ce13")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("ch_erp_config")
 }

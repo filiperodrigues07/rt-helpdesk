@@ -1,5 +1,5 @@
 import { permissionRepository } from '../repositories/permissionRepository';
-import { prisma } from '../utils/prisma';
+import { tenantPrisma as prisma } from '../utils/tenantPrisma';
 import { AppError } from '../utils/AppError';
 
 export const permissionService = {

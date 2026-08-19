@@ -13,7 +13,7 @@ export const authService = {
   async login({ email, password }: LoginInput) {
     const user = await userRepository.findByEmail(email);
 
-    if (!user || !user.active) {
+    if (!user || !user.active || !user.tenant.active) {
       throw new AppError('Credenciais inválidas', 401);
     }
 
@@ -24,7 +24,7 @@ export const authService = {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role.name },
+      { id: user.id, email: user.email, role: user.role.name, tenantId: user.tenantId },
       env.jwtSecret,
       { expiresIn: env.jwtExpiresIn } as jwt.SignOptions,
     );
